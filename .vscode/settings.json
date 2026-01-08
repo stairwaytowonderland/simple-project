@@ -1,0 +1,56 @@
+{
+	"editor.formatOnType": true,
+	"editor.formatOnSave": true,
+	"editor.formatOnPaste": false,
+	// "editor.formatOnSaveMode": "modifications",
+	// https://marketplace.visualstudio.com/items?itemName=esbenp.prettier-vscode
+	"editor.defaultFormatter": "esbenp.prettier-vscode",
+	"editor.detectIndentation": false,
+	"editor.tabSize": 4,
+	"prettier.useEditorConfig": true,
+	"prettier.configPath": ".prettierrc",
+	"files.eol": "\n",
+	"files.encoding": "utf8",
+	"files.trimTrailingWhitespace": true,
+	"files.insertFinalNewline": true,
+	// Words in the `cSpell.words` list can be suggested as corrections for misspelled words.
+	"cSpell.words": ["isort", "pylint"],
+	// Words in the `cSpell.ignoreWords` list will be ignored by the spell checker (and also not appear in the list of spelling suggestions).
+	// "cSpell.ignoreWords": ["todo", "fixme"], // "todo" and "fixme" are already ignored by default
+	"[yaml]": {
+		"editor.defaultFormatter": "redhat.vscode-yaml",
+		"editor.formatOnSave": true
+		// "editor.tabSize": 2, // 2 spaces is standard for YAML and is handled by vscode-yaml extension
+	},
+	"[terraform]": {
+		"editor.defaultFormatter": "hashicorp.terraform",
+		"editor.formatOnSave": true,
+		"editor.tabSize": 2
+	},
+	"[terraform-vars]": {
+		"editor.defaultFormatter": "hashicorp.terraform",
+		"editor.formatOnSave": true,
+		"editor.tabSize": 2
+	},
+	"[toml]": {
+		"editor.defaultFormatter": "tamasfe.even-better-toml",
+		"editor.formatOnSave": true
+	}
+	// If formatting isn't working after changing black-formatter.args ...
+	// In the Command Pallete search for 'Black Formatter: Restart Server'
+	/* Sample pyproject.toml
+	[tool.black]
+	line-length = 88
+	target-version = ['py310', 'py311', 'py312']
+	include = '\.pyi?$' */
+	// "black-formatter.args": ["--config", "${workspaceFolder}/pyproject.toml"],
+	// "isort.args": ["--profile", "black"],
+	// "[python]": {
+	// 	// Editorconfig settings will override these settings
+	// 	"editor.defaultFormatter": "ms-python.black-formatter",
+	// 	"editor.formatOnSave": true,
+	// 	"editor.codeActionsOnSave": {
+	// 		"source.organizeImports": "explicit"
+	// 	}
+	// }
+}
