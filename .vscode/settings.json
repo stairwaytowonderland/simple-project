@@ -13,10 +13,6 @@
 	"files.encoding": "utf8",
 	"files.trimTrailingWhitespace": true,
 	"files.insertFinalNewline": true,
-	// Words in the `cSpell.words` list can be suggested as corrections for misspelled words.
-	"cSpell.words": ["isort", "pylint"],
-	// Words in the `cSpell.ignoreWords` list will be ignored by the spell checker (and also not appear in the list of spelling suggestions).
-	// "cSpell.ignoreWords": ["todo", "fixme"], // "todo" and "fixme" are already ignored by default
 	"[yaml]": {
 		"editor.defaultFormatter": "redhat.vscode-yaml",
 		"editor.formatOnSave": true

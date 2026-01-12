@@ -31,8 +31,9 @@ The [devcontainer.json](devcontainer.json) file configures VS Code's development
   "context": "..",
   "args": {
     "USERNAME": "vscode",
-    "USER_UID": "1000",
-    "USER_GID": "1000"
+    // Default values, here for reference
+    // "USER_UID": "1000",
+    // "USER_GID": "1000"
   }
 }
 ```
@@ -70,7 +71,7 @@ Local ssh keys will be mounted, to allow seamless integration with remote server
 
 The configuration installs development tools via [devcontainers features](https://containers.dev/features):
 
-- **Languages**: Node.js (LTS), Python 3.11 (configurable), Terraform 1.4.5 (configurable)
+- **Languages**: Node.js (LTS), Python 3.x (default: latest; configurable), Terraform 1.4.5 (configurable)
 - **Linters/Formatters**: Prettier, Pylint, Black, isort
 - **Tools**: Docker-in-Docker, GitHub CLI, AWS CLI
 - **Extensions**: Python, Terraform, Markdown, YAML, ESLint, and more

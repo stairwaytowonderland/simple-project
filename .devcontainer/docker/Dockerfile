@@ -80,11 +80,14 @@ EOF
 
 FROM base AS usersetup
 
+ENV PATH="/home/$USERNAME/.local/bin:${PATH}"
+
 # As of Ubuntu 24 (Noble Numbat), the Ubuntu base image comes with a non-root user ubuntu with UID 1000
 # Delete this user to avoid conflicts when creating our own non-root user
 RUN if [ "$IMAGE_NAME" = "ubuntu" ]; then \
         if id "ubuntu" &>/dev/null; then \
-            $LOGGER "Deleting user 'ubuntu' for $IMAGE_NAME" && userdel -f -r ubuntu || echo "Failed to delete ubuntu user for $IMAGE_NAME"; \
+            $LOGGER "Deleting user 'ubuntu' for $IMAGE_NAME" && userdel -f -r ubuntu \
+				|| LEVEL=error $LOGGER "Failed to delete ubuntu user for $IMAGE_NAME"; \
         else \
             $LOGGER "User 'ubuntu' does not exist for $IMAGE_NAME"; \
         fi; \
@@ -99,34 +102,23 @@ RUN groupadd --gid $USER_GID $USERNAME \
 
 FROM usersetup AS devtools
 
-ARG PYTHON_VERSION=3.12
+# Set default Python version
+# ('system' to use system Python, 'latest' to use latest Homebrew Python, or specify version like '3.9', '3.10', etc.)
+ARG PYTHON_VERSION=latest
 
-RUN apt-get update \
-	&& apt-get install -y --no-install-recommends \
-		# Python and related tools
-		python3 \
-		python3-pip \
-		python3-venv \
-		python3-dev \
-		pipx \
-	&& apt-get clean -y \
-	&& rm -rf /var/lib/apt/lists/*
-
-RUN python3 --version | awk -F. '{print $1"."$2}' > /python-version \
-	&& apt-get update \
-	&& apt-get install -y --no-install-recommends software-properties-common \
-	&& add-apt-repository -y ppa:deadsnakes/ppa \
-	&& apt-get update \
-	&& if [ "$(cat /python-version)" != "Python ${PYTHON_VERSION}" ] ; then \
-		apt-get install -y --no-install-recommends \
-			# Python specific version
-			python${PYTHON_VERSION} \
-			python${PYTHON_VERSION}-venv \
-			python${PYTHON_VERSION}-dev \
-		&& python3 --version > /python-version ; \
-	fi \
-	&& apt-get clean -y \
-	&& rm -rf /var/lib/apt/lists/*
+# Install base Python version and tools
+RUN if [ "$PYTHON_VERSION" = "system" ] ; then \
+		apt-get update \
+		&& apt-get install -y --no-install-recommends \
+			# Python and related tools
+			python3 \
+			python3-pip \
+			python3-venv \
+			python3-dev \
+			pipx \
+		&& apt-get clean -y \
+		&& rm -rf /var/lib/apt/lists/*; \
+	fi
 
 # Install Node.js (LTS version) and npm
 RUN curl -fsSL https://deb.nodesource.com/setup_lts.x | bash - \
@@ -134,29 +126,6 @@ RUN curl -fsSL https://deb.nodesource.com/setup_lts.x | bash - \
 		nodejs \
     && apt-get clean -y \
     && rm -rf /var/lib/apt/lists/*
-
-# Ensure target version of python is used
-RUN rm -f /usr/bin/python3 \
-	&& ln -s /usr/bin/python${PYTHON_VERSION} /usr/bin/python3 \
-	&& ln -s /usr/bin/python3 /usr/bin/python
-
-# Switch to non-root user
-USER $USERNAME
-WORKDIR /home/$USERNAME
-
-# Configure pipx, and install Poetry and uv
-# RUN python3 -m pipx ensurepath
-RUN pipx install poetry uv
-
-# Verify installations
-RUN git --version && python3 --version && node --version && npm --version
-
-
-FROM usersetup AS devcontainer
-
-# Add Homebrew to PATH for the user
-# ENV PATH="/home/$USERNAME/.local/bin:${PATH}"
-# ENV PATH="/home/linuxbrew/.linuxbrew/bin:${PATH}"
 
 # Switch to non-root user
 USER $USERNAME
@@ -167,10 +136,52 @@ WORKDIR /home/$USERNAME
 RUN NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 
 # Ensure Homebrew is properly configured
-RUN echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"' >> /home/$USERNAME/.bashrc \
-    && echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"' >> /home/$USERNAME/.profile
+# The brew shellenv line exports HOMEBREW_PREFIX, HOMEBREW_CELLAR,
+# and HOMEBREW_REPOSITORY (INFOPATH is also set),
+# in addition to prepending the brew 'bin' and 'sbin' to the PATH.
+RUN echo >> /home/vscode/.bashrc \
+	&& echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"' >> /home/$USERNAME/.bashrc
 
-ENV PATH="/home/$USERNAME/.local/bin:${PATH}"
+RUN /home/linuxbrew/.linuxbrew/bin/brew update \
+	&& if [ "$PYTHON_VERSION" = "latest" ] ; then \
+		/home/linuxbrew/.linuxbrew/bin/brew install python3; \
+	elif [ "$PYTHON_VERSION" != "system" -a "$(python3 --version | awk -F. '{print $1"."$2}')" != "Python ${PYTHON_VERSION}" ] ; then \
+		/home/linuxbrew/.linuxbrew/bin/brew install python@${PYTHON_VERSION}; \
+	fi \
+	&& if [ "$PYTHON_VERSION" != "system" ] ; then \
+		/home/linuxbrew/.linuxbrew/bin/brew install pipx; \
+	fi
+
+# Needed to properly reference target version of python3
+ENV PATH="/home/linuxbrew/.linuxbrew/opt/python3/bin:${PATH}"
+
+# Configure pipx, and install Poetry and uv
+RUN if [ "$PYTHON_VERSION" = "system" ] ; then \
+		pipx install poetry uv; \
+	else \
+		/home/linuxbrew/.linuxbrew/bin/pipx install poetry uv; \
+	fi
+
+# Verify installations
+RUN git --version && python3 --version && node --version && npm --version
+
+
+FROM usersetup AS devcontainer
+
+# Switch to non-root user
+USER $USERNAME
+WORKDIR /home/$USERNAME
+
+# Install Homebrew for the non-root user
+# Note: Homebrew on Linux doesn't require admin privileges when installed in home directory
+RUN NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+# Ensure Homebrew is properly configured
+# The brew shellenv line exports HOMEBREW_PREFIX, HOMEBREW_CELLAR,
+# and HOMEBREW_REPOSITORY (INFOPATH is also set),
+# in addition to prepending the brew 'bin' and 'sbin' to the PATH.
+RUN echo >> /home/vscode/.bashrc \
+	&& echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"' >> /home/$USERNAME/.bashrc
 
 # Update Homebrew and install some packages
 RUN /home/linuxbrew/.linuxbrew/bin/brew update \
@@ -268,6 +279,7 @@ exec /home/linuxbrew/.linuxbrew/opt/code-server/bin/code-server \\
 EOF
 
 USER $USERNAME
+# WORKDIR /home/$USERNAME/workspace
 
 RUN /home/linuxbrew/.linuxbrew/bin/brew install code-server
 

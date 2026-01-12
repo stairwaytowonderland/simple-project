@@ -12,7 +12,8 @@ Use this repo as a starting point for other new projects.
 │   └── README.md
 ├── .vscode/
 │   ├── Brewfile              # Brew bundle file to easily install the vscode extensions
-│   └── settings.json         # The VS Code settings file
+│   ├── extensions.json       # VS Code recommended extensions file
+│   └── settings.json         # VS Code settings file
 ├── src                       # Source files
 ├── ...                       # Other project files
 └── README.md                 # This file

@@ -36,8 +36,11 @@
 		"ghcr.io/devcontainers/features/node:1": {
 			"version": "lts"
 		},
+		// Use "os-provided" to use the OS package manager version of Python, "latest", or specify a version like "3.12"
+		// The "os-provided" version will likely be an older version of Python
+		// (e.g. Python 3.11 on Debian 12 or Python 3.12 on Debian 13)
 		"ghcr.io/devcontainers/features/python:1": {
-			"version": "3.11",
+			"version": "latest",
 			"installTools": "true"
 		},
 		"ghcr.io/devcontainers/features/terraform:1": {
@@ -98,7 +101,6 @@
 				"ms-python.vscode-python-envs",
 				"redhat.vscode-yaml",
 				"rodolphebarbanneau.python-docstring-highlighter",
-				"streetsidesoftware.code-spell-checker",
 				"tamasfe.even-better-toml",
 				"tomasdahlqvist.markdown-admonitions",
 				"yahyabatulu.vscode-markdown-alert"
@@ -120,7 +122,6 @@
 				"files.encoding": "utf8",
 				"files.trimTrailingWhitespace": true,
 				"files.insertFinalNewline": true,
-				"cSpell.words": ["isort", "pylint"],
 				"[yaml]": {
 					"editor.defaultFormatter": "redhat.vscode-yaml",
 					"editor.formatOnSave": true
