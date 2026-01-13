@@ -44,7 +44,7 @@ fi
 IMAGE_VERSION=${IMAGE_VERSION:-"latest"}
 
 build_tag="${IMAGE_NAME}:${DOCKER_TARGET}"
-docker_tag="${IMAGE_NAME}:${IMAGE_VERSION}"
+docker_tag="${IMAGE_NAME}-${DOCKER_TARGET}:${IMAGE_VERSION}"
 registry_url="ghcr.io/${GITHUB_USER}/${docker_tag}"
 
 # Tag the image for GitHub Container Registry

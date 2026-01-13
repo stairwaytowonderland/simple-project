@@ -1,4 +1,4 @@
-# Simple Project
+# Starter Project
 
 Use this repo as a starting point for other new projects.
 
@@ -8,11 +8,15 @@ Use this repo as a starting point for other new projects.
 <root>
 ├── .devcontainer/
 │   ├── docker/               # Dev Container Docker files and scripts
+│   │   ├── Dockerfile        # Multi-stage Dockerfile for building the development container
+│   │   ├── README.md
+│   │   └── bin/              # Shell scripts for container lifecycle management
 │   ├── devcontainer.json     # VS Code Dev Container configuration
 │   └── README.md
 ├── .vscode/
 │   ├── Brewfile              # Brew bundle file to easily install the vscode extensions
-│   └── settings.json         # The VS Code settings file
+│   ├── extensions.json       # VS Code recommended extensions file
+│   └── settings.json         # VS Code settings file
 ├── src                       # Source files
 ├── ...                       # Other project files
 └── README.md                 # This file
@@ -23,7 +27,7 @@ Use this repo as a starting point for other new projects.
 ### Clone this Repo
 
 ```bash
-git clone git@github.com:stairwaytowonderland/simple-project.git
+git clone git@github.com:stairwaytowonderland/starter-project.git
 ```
 
 ### Create a new repository on the command line
@@ -182,6 +186,7 @@ Essential code formatting extensions.
 
 #### IaC
 
+- [CloudFormation Linter](https://marketplace.visualstudio.com/items?itemName=kddejong.vscode-cfn-lint)
 - [Terraform](https://marketplace.visualstudio.com/items?itemName=HashiCorp.terraform)
 
 ### Markdown Extensions

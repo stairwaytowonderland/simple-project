@@ -19,30 +19,31 @@ ARG LOGGER=/logger.sh
 
 # Update and install essential packages
 RUN apt-get update \
-	&& apt-get -y install --no-install-recommends \
-		# Essential build tools
-		build-essential \
-		curl \
-		wget \
-		ca-certificates \
-		# Additional utilities
-		sudo \
-		vim \
-		nano \
-		less \
-		procps \
-		lsb-release \
-		tzdata \
-		jq \
-		yq \
-		# Git (required for homebrew installation)
-		git \
-	&& apt-get clean -y \
-	&& rm -rf /var/lib/apt/lists/*
+  && apt-get -y install --no-install-recommends \
+  # Essential build tools
+  build-essential \
+  curl \
+  wget \
+  unzip \
+  ca-certificates \
+  # Additional utilities
+  sudo \
+  vim \
+  nano \
+  less \
+  procps \
+  lsb-release \
+  tzdata \
+  jq \
+  yq \
+  # Git (required for homebrew installation)
+  git \
+  && apt-get clean -y \
+  && rm -rf /var/lib/apt/lists/*
 
 RUN touch "$LOGGER" \
-	&& chmod +x $LOGGER \
-	&& cat > "$LOGGER" <<EOF
+  && chmod +x $LOGGER \
+  && cat > "$LOGGER" <<EOF
 #!/bin/sh
 
 # Simple logger script
@@ -50,18 +51,18 @@ RUN touch "$LOGGER" \
 LEVEL="\${LEVEL:-info}"
 
 log() {
-	local message="\$*"
-	local timestamp="\$(date +'%Y-%m-%d %H:%M:%S')"
-	echo "[\$timestamp] [\$(echo \$LEVEL | tr '[:lower:]' '[:upper:]')] \$message" >&2
+  local message="\$*"
+  local timestamp="\$(date +'%Y-%m-%d %H:%M:%S')"
+  echo "[\$timestamp] [\$(echo \$LEVEL | tr '[:lower:]' '[:upper:]')] \$message" >&2
 }
 
 main() {
-	if [ "\$#" -lt 1 ] ; then
-		LEVEL=error log "Usage: logger.sh <message>"
-		exit 1
-	fi
-	# Log the message
-	log "\$@"
+  if [ "\$#" -lt 1 ] ; then
+    LEVEL=error log "Usage: logger.sh <message>"
+    exit 1
+  fi
+  # Log the message
+  log "\$@"
 }
 
 main "\$@"
@@ -69,8 +70,8 @@ EOF
 
 # Create password generator script
 RUN touch "$PASSGEN" \
-	&& chmod +x $PASSGEN \
-	&& cat > "$PASSGEN" <<EOF
+  && chmod +x $PASSGEN \
+  && cat > "$PASSGEN" <<EOF
 #!/bin/sh
 
 # Generate a random 32-character alphanumeric password
@@ -80,83 +81,61 @@ EOF
 
 FROM base AS usersetup
 
+ENV PATH="/home/$USERNAME/.local/bin:${PATH}"
+
 # As of Ubuntu 24 (Noble Numbat), the Ubuntu base image comes with a non-root user ubuntu with UID 1000
 # Delete this user to avoid conflicts when creating our own non-root user
 RUN if [ "$IMAGE_NAME" = "ubuntu" ]; then \
-        if id "ubuntu" &>/dev/null; then \
-            $LOGGER "Deleting user 'ubuntu' for $IMAGE_NAME" && userdel -f -r ubuntu || echo "Failed to delete ubuntu user for $IMAGE_NAME"; \
-        else \
-            $LOGGER "User 'ubuntu' does not exist for $IMAGE_NAME"; \
-        fi; \
-    fi
+  if id "ubuntu" &>/dev/null; then \
+  $LOGGER "Deleting user 'ubuntu' for $IMAGE_NAME" && userdel -f -r ubuntu \
+  || LEVEL=error $LOGGER "Failed to delete ubuntu user for $IMAGE_NAME"; \
+  else \
+  $LOGGER "User 'ubuntu' does not exist for $IMAGE_NAME"; \
+  fi; \
+  fi
 
 # Create a new non-root user with sudo privileges
 RUN groupadd --gid $USER_GID $USERNAME \
-    && useradd --uid $USER_UID --gid $USER_GID -m $USERNAME -s /bin/bash \
-    && echo "$USERNAME ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/$USERNAME \
-    && chmod 0440 /etc/sudoers.d/$USERNAME
+  && useradd --uid $USER_UID --gid $USER_GID -m $USERNAME -s /bin/bash \
+  && echo "$USERNAME ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/$USERNAME \
+  && chmod 0440 /etc/sudoers.d/$USERNAME
+
+# RUN chpasswd <<<"root:docker"
 
 
 FROM usersetup AS devtools
 
-ARG PYTHON_VERSION=3.12
+# Set default Python version
+# ('system' to use system Python, 'latest' to use latest Homebrew Python, or specify version like '3.9', '3.10', etc.)
+ARG PYTHON_VERSION=latest
 
 RUN apt-get update \
-	&& apt-get install -y --no-install-recommends \
-		# Python and related tools
-		python3 \
-		python3-pip \
-		python3-venv \
-		python3-dev \
-		pipx \
-	&& apt-get clean -y \
-	&& rm -rf /var/lib/apt/lists/*
+  && apt-get -y install --no-install-recommends \
+  gnupg \
+  software-properties-common \
+  && apt-get clean -y \
+  && rm -rf /var/lib/apt/lists/*
 
-RUN python3 --version | awk -F. '{print $1"."$2}' > /python-version \
-	&& apt-get update \
-	&& apt-get install -y --no-install-recommends software-properties-common \
-	&& add-apt-repository -y ppa:deadsnakes/ppa \
-	&& apt-get update \
-	&& if [ "$(cat /python-version)" != "Python ${PYTHON_VERSION}" ] ; then \
-		apt-get install -y --no-install-recommends \
-			# Python specific version
-			python${PYTHON_VERSION} \
-			python${PYTHON_VERSION}-venv \
-			python${PYTHON_VERSION}-dev \
-		&& python3 --version > /python-version ; \
-	fi \
-	&& apt-get clean -y \
-	&& rm -rf /var/lib/apt/lists/*
+# Install base Python version and tools
+RUN if [ "$PYTHON_VERSION" = "system" ] ; then \
+  apt-get update \
+  && apt-get -y install --no-install-recommends \
+  # Python and related tools
+  python3 \
+  python3-pip \
+  python3-venv \
+  python3-dev \
+  pipx \
+  && apt-get clean -y \
+  && rm -rf /var/lib/apt/lists/*; \
+  fi
 
 # Install Node.js (LTS version) and npm
 RUN curl -fsSL https://deb.nodesource.com/setup_lts.x | bash - \
-    && apt-get install -y --no-install-recommends \
-		nodejs \
-    && apt-get clean -y \
-    && rm -rf /var/lib/apt/lists/*
-
-# Ensure target version of python is used
-RUN rm -f /usr/bin/python3 \
-	&& ln -s /usr/bin/python${PYTHON_VERSION} /usr/bin/python3 \
-	&& ln -s /usr/bin/python3 /usr/bin/python
-
-# Switch to non-root user
-USER $USERNAME
-WORKDIR /home/$USERNAME
-
-# Configure pipx, and install Poetry and uv
-# RUN python3 -m pipx ensurepath
-RUN pipx install poetry uv
-
-# Verify installations
-RUN git --version && python3 --version && node --version && npm --version
-
-
-FROM usersetup AS devcontainer
-
-# Add Homebrew to PATH for the user
-# ENV PATH="/home/$USERNAME/.local/bin:${PATH}"
-# ENV PATH="/home/linuxbrew/.linuxbrew/bin:${PATH}"
+  && apt-get -y install --no-install-recommends \
+  nodejs \
+  && apt-get clean -y \
+  && rm -rf /var/lib/apt/lists/*
 
 # Switch to non-root user
 USER $USERNAME
@@ -167,30 +146,155 @@ WORKDIR /home/$USERNAME
 RUN NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 
 # Ensure Homebrew is properly configured
-RUN echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"' >> /home/$USERNAME/.bashrc \
-    && echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"' >> /home/$USERNAME/.profile
+# The brew shellenv line exports HOMEBREW_PREFIX, HOMEBREW_CELLAR,
+# and HOMEBREW_REPOSITORY (INFOPATH is also set),
+# in addition to prepending the brew 'bin' and 'sbin' to the PATH.
+RUN echo >> /home/$USERNAME/.bashrc \
+  && echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"' >> /home/$USERNAME/.bashrc \
+  && cat >> /home/$USERNAME/.profile <<EOF
 
-ENV PATH="/home/$USERNAME/.local/bin:${PATH}"
+# https://docs.brew.sh/Shell-Completion
+if type brew &>/dev/null
+then
+  HOMEBREW_PREFIX="$(brew --prefix)"
+  if [[ -r "${HOMEBREW_PREFIX}/etc/profile.d/bash_completion.sh" ]]
+  then
+    source "${HOMEBREW_PREFIX}/etc/profile.d/bash_completion.sh"
+  else
+    for COMPLETION in "${HOMEBREW_PREFIX}/etc/bash_completion.d/"*
+    do
+      [[ -r "${COMPLETION}" ]] && source "${COMPLETION}"
+    done
+  fi
+fi
+EOF
+
+RUN /home/linuxbrew/.linuxbrew/bin/brew update \
+  && if [ "$PYTHON_VERSION" = "latest" ] ; then \
+  /home/linuxbrew/.linuxbrew/bin/brew install python3; \
+  elif [ "$PYTHON_VERSION" != "system" -a "$(python3 --version | awk -F. '{print $1"."$2}')" != "Python ${PYTHON_VERSION}" ] ; then \
+  /home/linuxbrew/.linuxbrew/bin/brew install python@${PYTHON_VERSION}; \
+  fi \
+  && if [ "$PYTHON_VERSION" != "system" ] ; then \
+  /home/linuxbrew/.linuxbrew/bin/brew install pipx; \
+  fi \
+  && /home/linuxbrew/.linuxbrew/bin/brew install \
+  cfn-lint \
+  pre-commit
+
+# Needed to properly reference target version of python3
+ENV PATH="/home/linuxbrew/.linuxbrew/opt/python3/bin:${PATH}"
+
+# Configure pipx, and install Poetry and uv
+RUN if [ "$PYTHON_VERSION" = "system" ] ; then \
+  pipx install poetry uv; \
+  else \
+  /home/linuxbrew/.linuxbrew/bin/pipx install poetry uv; \
+  fi
+
+# Verify installations
+RUN git --version && python3 --version && node --version && npm --version
+
+
+FROM devtools AS cloudtools
+
+USER root
+
+RUN if [ "$(uname -m)" = "x86_64" ] ; then \
+  # Install AWS CLI v2 for x86_64
+  curl -sSL "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"; \
+  else \
+  # uname -m must be aarch64
+  curl -sSL "https://awscli.amazonaws.com/awscli-exe-linux-aarch64.zip" -o "awscliv2.zip"; \
+  fi \
+  && unzip -o awscliv2.zip \
+  && ./aws/install --update \
+  && rm -rf ./aws \
+  && rm -f awscliv2.zip \
+  && cat >> /home/$USERNAME/.bashrc <<EOF
+
+# Enable AWS CLI bash completion
+if command -v aws_completer >/dev/null 2>&1; then
+  complete -C aws_completer aws
+elif [ -x "/usr/local/bin/aws_completer" ]; then
+  complete -C "/usr/local/bin/aws_completer" aws
+elif [ -x "/opt/homebrew/bin/aws_completer" ]; then
+  complete -C "/opt/homebrew/bin/aws_completer" aws
+fi
+EOF
+
+RUN wget -O- https://apt.releases.hashicorp.com/gpg | gpg --dearmor \
+  | tee /usr/share/keyrings/hashicorp-archive-keyring.gpg > /dev/null \
+  && gpg --no-default-keyring \
+  --keyring /usr/share/keyrings/hashicorp-archive-keyring.gpg \
+  --fingerprint \
+  && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com \
+  $(grep -oP '(?<=UBUNTU_CODENAME=).*' /etc/os-release || lsb_release -cs) main" \
+  | tee /etc/apt/sources.list.d/hashicorp.list \
+  && apt-get update \
+  && apt-get -y install --no-install-recommends terraform \
+  && echo >> /home/$USERNAME/.bashrc \
+  && echo 'complete -C /usr/bin/terraform terraform' >> /home/$USERNAME/.bashrc \
+  && apt-get clean -y \
+  && rm -rf /var/lib/apt/lists/*
+
+RUN [ -d /etc/apt/keyrings ] || mkdir -p -m 755 /etc/apt/keyrings \
+  && out=$(mktemp) && wget -nv -O$out https://cli.github.com/packages/githubcli-archive-keyring.gpg \
+  && cat $out | tee /etc/apt/keyrings/githubcli-archive-keyring.gpg > /dev/null \
+  && chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg \
+  && mkdir -p -m 755 /etc/apt/sources.list.d \
+  && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | tee /etc/apt/sources.list.d/github-cli.list > /dev/null \
+  && apt-get update \
+  && apt-get -y install --no-install-recommends gh \
+  && echo >> /home/$USERNAME/.bashrc \
+  && echo 'eval "$(gh completion -s bash)"' >> /home/$USERNAME/.bashrc \
+  && apt-get clean -y \
+  && rm -rf /var/lib/apt/lists/* \
+  && rm -f $out
+
+USER $USERNAME
+
+# Verify installations
+RUN aws --version && terraform version && gh --version
+
+
+FROM usersetup AS devcontainer
+
+# Switch to non-root user
+USER $USERNAME
+WORKDIR /home/$USERNAME
+
+# Install Homebrew for the non-root user
+# Note: Homebrew on Linux doesn't require admin privileges when installed in home directory
+RUN NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+# Ensure Homebrew is properly configured
+# The brew shellenv line exports HOMEBREW_PREFIX, HOMEBREW_CELLAR,
+# and HOMEBREW_REPOSITORY (INFOPATH is also set),
+# in addition to prepending the brew 'bin' and 'sbin' to the PATH.
+RUN echo >> /home/$USERNAME/.bashrc \
+  && echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"' >> /home/$USERNAME/.bashrc
 
 # Update Homebrew and install some packages
 RUN /home/linuxbrew/.linuxbrew/bin/brew update \
-	&& /home/linuxbrew/.linuxbrew/bin/brew install \
-		pre-commit
+  && /home/linuxbrew/.linuxbrew/bin/brew install \
+  cfn-lint \
+  pre-commit
 
 # Set the default working directory
 WORKDIR /home/$USERNAME/workspace
 
-LABEL org.opencontainers.image.title="simple-project:devcontainer"
-LABEL org.opencontainers.image.source=https://github.com/stairwaytowonderland/simple-project
+LABEL org.opencontainers.image.title="starter-project:devcontainer"
+LABEL org.opencontainers.image.source=https://github.com/stairwaytowonderland/starter-project
 LABEL org.opencontainers.image.description="A simple Debian-based Docker image with essential development tools and Homebrew."
 LABEL org.opencontainers.image.licenses=MIT
 
 
-FROM devcontainer AS codeserver
+FROM devtools AS codeserver
 
 # Don't put CODE_SERVER_CONFIG in workspace directly to avoid issues with volume mounts
 ENV CODE_SERVER_CONFIG=/home/$USERNAME/.config/code-server/config.yaml
-ENV CODE_SERVER_EXTENSIONS_DIR=/home/$USERNAME/workspace/.code-server/extensions
+ENV CODE_SERVER_EXTENSIONS=/home/$USERNAME/workspace/.code-server/extensions/extensions.json
 
 ARG BIND_ADDR=0.0.0.0:8080
 
@@ -201,91 +305,124 @@ ENV DEBUG=false
 USER root
 
 RUN apt-get update \
-	&& apt-get -y install --no-install-recommends \
-		# Tini for proper signal handling
-		tini \
-	&& apt-get clean -y \
-	&& rm -rf /var/lib/apt/lists/*
+  && apt-get -y install --no-install-recommends \
+  # Tini for proper signal handling
+  tini \
+  && apt-get clean -y \
+  && rm -rf /var/lib/apt/lists/*
 
-RUN touch "/docker-cmd.sh" \
-	&& chmod +x /docker-cmd.sh \
-	&& chown $USERNAME:$USERNAME "/docker-cmd.sh" \
-	&& cat > "/docker-cmd.sh" <<EOF
+RUN touch "/start-code-server.sh" \
+  && chmod +x /start-code-server.sh \
+  && chown $USERNAME:$USERNAME "/start-code-server.sh" \
+  && cat > "/start-code-server.sh" <<EOF
 #!/bin/sh
 
 [ \$DEBUG != "true" ] || exec /bin/bash
 
 if [ "\$DEV" = "true" ] ; then
-	$LOGGER "Running in DEV mode: disabling authentication for code-server"
-	auth="none"
+  $LOGGER "Running in DEV mode: disabling authentication for code-server"
+  auth="none"
 else
-	$LOGGER "Set DEV=true to disable authentication for code-server"
-	auth="password"
-	export PASSWORD="\${PASSWORD:-\$($PASSGEN)}"
+  $LOGGER "Set DEV=true to disable authentication for code-server"
+  auth="password"
+  export PASSWORD="\${PASSWORD:-\$($PASSGEN)}"
 fi
-
-[ -n "\$0" -a -n "\$1" ] || \\
-	set -- "\$HOME/workspace"
 
 config_dir="\$(dirname \$CODE_SERVER_CONFIG)"
+extensions_dir="\$(dirname \$CODE_SERVER_EXTENSIONS)"
 [ -d "\$config_dir" ] || \\
-	mkdir -p "\$config_dir"
-[ -d "\$CODE_SERVER_EXTENSIONS_DIR" ] || \\
-	mkdir -p "\$CODE_SERVER_EXTENSIONS_DIR"
+  mkdir -p "\$config_dir"
+[ -d "\$extensions_dir" ] || \\
+  mkdir -p "\$extensions_dir"
 
-if [ -f "\$CODE_SERVER_EXTENSIONS_DIR/extensions.json" ]; then
-	$LOGGER "Installing extensions from \$CODE_SERVER_EXTENSIONS_DIR/extensions.json"
-	extension_ids=\$(jq -r '.[].identifier.id' "\$CODE_SERVER_EXTENSIONS_DIR/extensions.json")
+if [ -f "\$CODE_SERVER_EXTENSIONS" ]; then
+  $LOGGER "Installing extensions from \$CODE_SERVER_EXTENSIONS"
+  extension_ids=\$(jq -r '.[].identifier.id' "\$CODE_SERVER_EXTENSIONS")
 else
-	$LOGGER "Installing extensions from \$HOME/workspace/.vscode/extensions.json"
-	# Use cpp preprocessor to strip comments in JSON
-	# extension_ids=\$(cpp -P -E "\$HOME/workspace/.devcontainer/devcontainer.json" \\
-	# 	| jq -r '.customizations.vscode.extensions[]')
-	extension_ids=\$(cpp -P -E "\$HOME/workspace/.vscode/extensions.json" \\
-		| jq -r '.recommendations[]')
+  $LOGGER "Installing extensions from \$HOME/workspace/.vscode/extensions.json"
+  # Use cpp preprocessor to strip comments in JSON
+  # extension_ids=\$(cpp -P -E "\$HOME/workspace/.devcontainer/devcontainer.json" \\
+  # 	| jq -r '.customizations.vscode.extensions[]')
+  extension_ids=\$(cpp -P -E "\$HOME/workspace/.vscode/extensions.json" \\
+    | jq -r '.recommendations[]')
 fi
 for extension_id in \$extension_ids; do
-	$LOGGER "Installing extension: \$extension_id"
-	/home/linuxbrew/.linuxbrew/opt/code-server/bin/code-server \\
-		--install-extension "\$extension_id" \\
-		--extensions-dir "\$CODE_SERVER_EXTENSIONS_DIR"
+  $LOGGER "Installing extension: \$extension_id"
+  /home/linuxbrew/.linuxbrew/opt/code-server/bin/code-server \\
+    --install-extension "\$extension_id" \\
+    --extensions-dir "\$extensions_dir"
+done
+
+# File is either 'sourced', or no arguments passed, so set default parameters
+[ -n "\$0" -a -n "\$1" ] || \\
+  set -- \
+    --bind-addr "\$BIND_ADDR" \
+    --auth "\$auth" \
+    --cert false \
+    "\$HOME/workspace"
+
+# Ensure all parameters are set
+while [ "\$#" -gt 0 ] ; do
+  case "\$1" in
+    --bind-addr)
+      bind_addr="\${2:-\$BIND_ADDR}"
+      shift 2
+      ;;
+    --auth)
+      auth="\${2:-\$auth}"
+      shift 2
+      ;;
+    --cert)
+      cert="\${2:-false}"
+      shift 2
+      ;;
+    --)
+      break
+      ;;
+    *)
+      break
+      ;;
+  esac
 done
 
 # Create config file to prevent one from being auto-generated
 # with incorrect values (since parameters are passed on CLI)
 cat > "\$CODE_SERVER_CONFIG" <<EOT
-bind-addr: \$BIND_ADDR
+bind-addr: \$bind_addr
 auth: \$auth
 password: \${PASSWORD:-password}
-cert: false
+cert: \$cert
 EOT
 
 # Start code-server with the specified parameters
 exec /home/linuxbrew/.linuxbrew/opt/code-server/bin/code-server \\
-  --bind-addr \$BIND_ADDR --auth \$auth --cert false \\
-  --extensions-dir \$CODE_SERVER_EXTENSIONS_DIR \\
+  --bind-addr \$bind_addr --auth \$auth --cert \$cert \\
+  --extensions-dir \$extensions_dir \\
   "\$@"
 EOF
 
 USER $USERNAME
 
-RUN /home/linuxbrew/.linuxbrew/bin/brew install code-server
+RUN /home/linuxbrew/.linuxbrew/bin/brew install \
+  cfn-lint \
+  pre-commit \
+  code-server
 
 EXPOSE 8080
 
 ENTRYPOINT ["/usr/bin/tini", "--"]
 
-CMD ["/docker-cmd.sh"]
+CMD ["/start-code-server.sh"]
 
 
 FROM base AS production
 
 RUN apt-get update \
-	&& apt-get -y install --no-install-recommends \
-		# Tini for proper signal handling
-		tini \
-	&& apt-get clean -y \
-	&& rm -rf /var/lib/apt/lists/*
+  && apt-get -y install --no-install-recommends \
+  # Tini for proper signal handling
+  tini \
+  && apt-get clean -y \
+  && rm -rf /var/lib/apt/lists/*
 
 ENTRYPOINT ["/usr/bin/tini", "--"]
 

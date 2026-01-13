@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ./.devcontainer/docker/bin/build.sh \
-#   simple-project \
+#   starter-project \
 #   --build-arg USERNAME=vscode \
 #   --no-cache
 #   --progress=plain
@@ -73,9 +73,15 @@ echo "Docker context: $DOCKER_CONTEXT"
 com=(docker build)
 com+=("-f" "$dockerfile_path")
 com+=("--label" "org.opencontainers.image.title=$docker_tag")
-com+=("--label" "org.opencontainers.image.source=https://github.com/stairwaytowonderland/simple-project")
+com+=("--label" "org.opencontainers.image.source=https://github.com/stairwaytowonderland/starter-project")
 com+=("--label" "org.opencontainers.image.description=A simple Debian-based Docker image with essential development tools and Homebrew.")
 com+=("--label" "org.opencontainers.image.licenses=MIT")
+# If multi-arch, use annotations instead of labels
+# https://docs.docker.com/reference/cli/docker/buildx/build/#annotation
+# com+=("--annotation" "org.opencontainers.image.title=$docker_tag")
+# com+=("--annotation" "org.opencontainers.image.source=https://github.com/stairwaytowonderland/starter-project")
+# com+=("--annotation" "org.opencontainers.image.description=A simple Debian-based Docker image with essential development tools and Homebrew.")
+# com+=("--annotation" "org.opencontainers.image.licenses=MIT")
 com+=("--target" "$DOCKER_TARGET")
 com+=("-t" "$docker_tag")
 if [ -n "$REMOTE_USER" ] ; then

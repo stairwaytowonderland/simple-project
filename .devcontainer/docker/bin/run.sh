@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ./.devcontainer/docker/bin/run.sh \
-#   simple-project:devcontainer \
+#   starter-project:devcontainer \
 #   vscode \
 #   .
 

@@ -1,6 +1,6 @@
 {
 	"name": "VSCode Dev Container",
-	// "image": "ghcr.io/stairwaytowonderland/simple-project-devcontainer:latest",
+	// "image": "ghcr.io/stairwaytowonderland/starter-project-devcontainer:latest",
 	"build": {
 		"dockerfile": "./docker/Dockerfile",
 		"target": "devcontainer",
@@ -36,8 +36,11 @@
 		"ghcr.io/devcontainers/features/node:1": {
 			"version": "lts"
 		},
+		// Use "os-provided" to use the OS package manager version of Python, "latest", or specify a version like "3.12"
+		// The "os-provided" version will likely be an older version of Python
+		// (e.g. Python 3.11 on Debian 12 or Python 3.12 on Debian 13)
 		"ghcr.io/devcontainers/features/python:1": {
-			"version": "3.11",
+			"version": "latest",
 			"installTools": "true"
 		},
 		"ghcr.io/devcontainers/features/terraform:1": {
@@ -48,18 +51,22 @@
 		"ghcr.io/devcontainers-extra/features/prettier": {},
 		"ghcr.io/devcontainers-extra/features/pylint": {},
 		"ghcr.io/devcontainers-extra/features/black": {},
-		"ghcr.io/devcontainers-extra/features/isort": {},
+		"ghcr.io/devcontainers-extra/features/isort": {}
 
+		// The following features are commented out for faster builds, but can be enabled if needed
+		// ---------------------------------------
 		// Container features
-		// Not yet supported on debian:trixie (use 'debian:bookworm' or 'ubuntu-24.04')
-		"ghcr.io/devcontainers/features/docker-in-docker": {},
-
+		// (docker-in-docker not yet supported on debian:trixie (use 'debian:bookworm' or 'ubuntu-24.04'))
+		// "ghcr.io/devcontainers/features/docker-in-docker": {},
+		// Cloud features
+		// "ghcr.io/devcontainers/features/aws-cli:1": {},
+		// "ghcr.io/devcontainers/features/azure-cli:1": {},
+		// "ghcr.io/devcontainers/features/gcloud-cli:1": {},
 		// Additional features
-		"ghcr.io/devcontainers/features/github-cli": {},
-		"ghcr.io/devcontainers/features/aws-cli:1": {}
-		// Better to configure git and homebrew in Dockerfile
-		// "ghcr.io/devcontainers/features/git:1": {},
-		// "ghcr.io/meaningful-ooo/devcontainer-features/homebrew:2": {},
+		// "ghcr.io/devcontainers/features/github-cli": {},
+		// (glab CLI is not yet available for debian:trixie)
+		// "ghcr.io/devcontainers/features/glab-cli": {},
+		// ---------------------------------------
 	},
 
 	// Use 'postCreateCommand' to run commands after the container is created (overrides the CMD in Dockerfile)
@@ -78,30 +85,53 @@
 		"vscode": {
 			// VSCode extensions from Brewfile
 			"extensions": [
-				"bierner.github-markdown-preview",
-				"bierner.markdown-checkbox",
-				"bierner.markdown-emoji",
-				"bierner.markdown-footnotes",
-				"bierner.markdown-mermaid",
-				"bierner.markdown-preview-github-styles",
-				"bierner.markdown-yaml-preamble",
-				"bpruitt-goddard.mermaid-markdown-syntax-highlighting",
+				// ---------------------------------------
+				// Cloud and Docker extensions are commented out for faster builds, but can be enabled if needed
+				// ---------------------------------------
+				// "AmazonWebServices.aws-toolkit-vscode",
+				// "aws-scripting-guy.cform",
+				// "formulahendry.docker-explorer",
+				// "kddejong.vscode-cfn-lint",
+				// "ms-azuretools.vscode-docker",
+				// ---------------------------------------
+				// Markdown extensions are commented out for faster builds, but can be enabled if needed
+				// ---------------------------------------
+				// "bierner.github-markdown-preview",
+				// "bierner.markdown-checkbox",
+				// "bierner.markdown-emoji",
+				// "bierner.markdown-footnotes",
+				// "bierner.markdown-mermaid",
+				// "bierner.markdown-preview-github-styles",
+				// "bierner.markdown-yaml-preamble",
+				// "bpruitt-goddard.mermaid-markdown-syntax-highlighting",
+				// "streetsidesoftware.code-spell-checker",
+				// "tomasdahlqvist.markdown-admonitions",
+				// "yahyabatulu.vscode-markdown-alert",
+				// ---------------------------------------
+				// Non-essential extensions are commented out for faster builds, but can be enabled if needed
+				// ---------------------------------------
+				// "github.vscode-github-actions",
+				// "mechatroner.rainbow-csv",
+				// "mhutchie.git-graph",
+				// "ms-vscode-remote.remote-ssh",
+				// "ms-vscode-remote.remote-ssh-edit",
+				// "ms-vscode.remote-explorer",
+				// ---------------------------------------
 				"dbaeumer.vscode-eslint",
 				"editorconfig.editorconfig",
 				"esbenp.prettier-vscode",
-				"hashicorp.terraform",
+				"hashicorp.terraform", // Formatting for Terraform files
+				"ms-azuretools.vscode-containers", // Formatting for Dockerfiles
 				"ms-python.black-formatter",
 				"ms-python.isort",
 				"ms-python.pylint",
 				"ms-python.python",
 				"ms-python.vscode-pylance",
 				"ms-python.vscode-python-envs",
+				"samuelcolvin.jinjahtml",
 				"redhat.vscode-yaml",
 				"rodolphebarbanneau.python-docstring-highlighter",
-				"streetsidesoftware.code-spell-checker",
-				"tamasfe.even-better-toml",
-				"tomasdahlqvist.markdown-admonitions",
-				"yahyabatulu.vscode-markdown-alert"
+				"tamasfe.even-better-toml"
 			],
 
 			// VSCode settings from .vscode/settings.json
@@ -120,7 +150,13 @@
 				"files.encoding": "utf8",
 				"files.trimTrailingWhitespace": true,
 				"files.insertFinalNewline": true,
-				"cSpell.words": ["isort", "pylint"],
+				"files.associations": {
+					"*.Brewfile": "ruby",
+					"*.cron": "shellscript",
+					"*.lib": "shellscript",
+					"*yaml.tftpl": "jinja-yaml",
+					"*json.tftpl": "jinja-json"
+				},
 				"[yaml]": {
 					"editor.defaultFormatter": "redhat.vscode-yaml",
 					"editor.formatOnSave": true
@@ -148,7 +184,53 @@
 					"editor.codeActionsOnSave": {
 						"source.organizeImports": "explicit"
 					}
-				}
+				},
+				"yaml.customTags": [
+					"!reference sequence",
+					// CloudFormation custom tags
+					// https://github.com/redhat-developer/vscode-yaml/issues/669
+					"!And sequence",
+					"!And",
+					"!Base64 scalar",
+					"!Base64",
+					"!Cidr sequence",
+					"!Cidr",
+					"!Condition",
+					"!Condition scalar",
+					"!Equals sequence",
+					"!Equals",
+					"!FindInMap sequence",
+					"!FindInMap",
+					"!GetAtt",
+					"!GetAtt scalar",
+					"!GetAZs",
+					"!GetAZs scalar",
+					"!If sequence",
+					"!If",
+					"!ImportValue",
+					"!ImportValue scalar",
+					"!Join sequence",
+					"!Join",
+					"!Not sequence",
+					"!Not",
+					"!Or sequence",
+					"!Or",
+					"!Ref",
+					"!Ref scalar",
+					"!Select sequence",
+					"!Select",
+					"!Split sequence",
+					"!Split",
+					"!Sub sequence",
+					"!Sub",
+					"!Transform sequence",
+					"!Transform",
+					"!ValueOf",
+					"!ValueOf scalar",
+					"!ImportNoChecks",
+					"!ImportNoChecks scalar"
+					// Add any other CloudFormation intrinsic functions you use
+				]
 			}
 		}
 	}

@@ -13,10 +13,13 @@
 	"files.encoding": "utf8",
 	"files.trimTrailingWhitespace": true,
 	"files.insertFinalNewline": true,
-	// Words in the `cSpell.words` list can be suggested as corrections for misspelled words.
-	"cSpell.words": ["isort", "pylint"],
-	// Words in the `cSpell.ignoreWords` list will be ignored by the spell checker (and also not appear in the list of spelling suggestions).
-	// "cSpell.ignoreWords": ["todo", "fixme"], // "todo" and "fixme" are already ignored by default
+	"files.associations": {
+		"*.Brewfile": "ruby",
+		"*.cron": "shellscript",
+		"*.lib": "shellscript",
+		"*yaml.tftpl": "jinja-yaml",
+		"*json.tftpl": "jinja-json"
+	},
 	"[yaml]": {
 		"editor.defaultFormatter": "redhat.vscode-yaml",
 		"editor.formatOnSave": true
@@ -35,7 +38,11 @@
 	"[toml]": {
 		"editor.defaultFormatter": "tamasfe.even-better-toml",
 		"editor.formatOnSave": true
-	}
+	},
+	"[dockerfile]": {
+		"editor.defaultFormatter": "ms-azuretools.vscode-containers",
+		"editor.formatOnSave": true
+	},
 	// If formatting isn't working after changing black-formatter.args ...
 	// In the Command Pallete search for 'Black Formatter: Restart Server'
 	/* Sample pyproject.toml
@@ -53,4 +60,50 @@
 	// 		"source.organizeImports": "explicit"
 	// 	}
 	// }
+	"yaml.customTags": [
+		"!reference sequence",
+		// CloudFormation custom tags
+		// https://github.com/redhat-developer/vscode-yaml/issues/669
+		"!And sequence",
+		"!And",
+		"!Base64 scalar",
+		"!Base64",
+		"!Cidr sequence",
+		"!Cidr",
+		"!Condition",
+		"!Condition scalar",
+		"!Equals sequence",
+		"!Equals",
+		"!FindInMap sequence",
+		"!FindInMap",
+		"!GetAtt",
+		"!GetAtt scalar",
+		"!GetAZs",
+		"!GetAZs scalar",
+		"!If sequence",
+		"!If",
+		"!ImportValue",
+		"!ImportValue scalar",
+		"!Join sequence",
+		"!Join",
+		"!Not sequence",
+		"!Not",
+		"!Or sequence",
+		"!Or",
+		"!Ref",
+		"!Ref scalar",
+		"!Select sequence",
+		"!Select",
+		"!Split sequence",
+		"!Split",
+		"!Sub sequence",
+		"!Sub",
+		"!Transform sequence",
+		"!Transform",
+		"!ValueOf",
+		"!ValueOf scalar",
+		"!ImportNoChecks",
+		"!ImportNoChecks scalar"
+		// Add any other CloudFormation intrinsic functions you use
+	]
 }
