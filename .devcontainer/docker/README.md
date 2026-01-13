@@ -4,6 +4,30 @@ A detailed guide to the Dockerfile.
 
 _TODO_: Add complete details for each build target.
 
+## Environment Variables
+
+1. Copy the [sample.env](../../sample.env) from the project root, and create a `.env` (also in the project root):
+
+   ```bash
+   # From the project root ...
+   cp sample.env .env
+   ```
+
+1. Now update the `.env` that was just created with the relevant information.
+
+   - **GITHUB_REPO**: Should be the name of your repository (e.g. if the url is https://github.com/octocat/Hello-World, `GITHUB_REPO` would be _'Hello-World'_).
+   - **GITHUB_NAMESPACE**: Should be namespace owner of the repo (e.g. if the url is https://github.com/octocat/Hello-World, `GITHUB_NAMEPSACE` would be _'octocat'_)
+   - **GITHUB_TOKEN**: The access token used to [publish](#publishsh) your image to the Github package registry.
+
+1. Optionally load the `.env` file into your environment (not needed since the provided scripts will load the file):
+
+   ```bash
+   # From the project root ...
+   # ... load .env file, exporting all variables
+
+   set -a; . .env; set +a
+   ```
+
 ## Folder Structure
 
 ```
@@ -30,14 +54,16 @@ _TODO_: Add complete details for each build target.
 
 The Dockerfile accepts several build arguments that can be customized:
 
-| Argument     | Default        | Target     | Description                            |
-| ------------ | -------------- | ---------- | -------------------------------------- |
-| `IMAGE_NAME` | `ubuntu`       | base       | Base image name (must be Debian-based) |
-| `VARIANT`    | `latest`       | base       | Base image tag/version                 |
-| `USERNAME`   | `devcontainer` | base       | Non-root user name to create           |
-| `USER_UID`   | `1000`         | base       | User ID for the non-root user          |
-| `USER_GID`   | `$USER_UID`    | base       | Group ID for the non-root user         |
-| `BIND_ADDR`  | `0.0.0.0:8080` | codeserver | Group ID for the non-root user         |
+| Argument         | Default                | Target     | Description                            |
+| ---------------- | ---------------------- | ---------- | -------------------------------------- |
+| `IMAGE_NAME`     | `ubuntu`               | base       | Base image name (must be Debian-based) |
+| `VARIANT`        | `latest`               | base       | Base image tag/version                 |
+| `USERNAME`       | `devcontainer`         | base       | Non-root user name to create           |
+| `USER_UID`       | `1000`                 | base       | User ID for the non-root user          |
+| `USER_GID`       | `$USER_UID`            | base       | Group ID for the non-root user         |
+| `REPO_NAME`      | `starter-project`      | base       | Your repository name                   |
+| `REPO_NAMESPACE` | `stairwaytowonderland` | base       | Your repository namespace (owner)      |
+| `BIND_ADDR`      | `0.0.0.0:8080`         | codeserver | Group ID for the non-root user         |
 
 > [!NOTE]
 > As of Ubuntu 24+, a non-root `ubuntu` user exists. The Dockerfile automatically removes the default `ubuntu` user (UID 1000) to avoid conflicts when creating a custom user.

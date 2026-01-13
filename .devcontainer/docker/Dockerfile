@@ -16,6 +16,9 @@ ARG USER_UID=1000
 ARG USER_GID=$USER_UID
 ARG PASSGEN=/passgen.sh
 ARG LOGGER=/logger.sh
+# Repository information
+ARG REPO_NAME=starter-project
+ARG REPO_NAMESPACE=stairwaytowonderland
 
 # Update and install essential packages
 RUN apt-get update \
@@ -284,8 +287,8 @@ RUN /home/linuxbrew/.linuxbrew/bin/brew update \
 # Set the default working directory
 WORKDIR /home/$USERNAME/workspace
 
-LABEL org.opencontainers.image.title="starter-project:devcontainer"
-LABEL org.opencontainers.image.source=https://github.com/stairwaytowonderland/starter-project
+LABEL org.opencontainers.image.title="$REPO_NAME:devcontainer"
+LABEL org.opencontainers.image.source=https://github.com/$REPO_NAMESPACE/$REPO_NAME
 LABEL org.opencontainers.image.description="A simple Debian-based Docker image with essential development tools and Homebrew."
 LABEL org.opencontainers.image.licenses=MIT
 

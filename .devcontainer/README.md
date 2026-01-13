@@ -101,3 +101,34 @@ The Dockerfile accepts several build arguments that can be customized:
 > As of Ubuntu 24+, a non-root `ubuntu` user exists. The Dockerfile automatically removes the default `ubuntu` user (UID 1000) to avoid conflicts when creating a custom user.
 >
 > See the [official docs](https://code.visualstudio.com/remote/advancedcontainers/add-nonroot-user) for more details on non-root users.
+
+## CLI Tool
+
+For command line integration, install [the dev container cli](https://code.visualstudio.com/docs/devcontainers/devcontainer-cli#_the-dev-container-cli).
+
+See the [official repo](https://github.com/devcontainers/cli) for a complete reference.
+
+### Install
+
+**npm**
+
+```bash
+npm install -g @devcontainers/cli
+
+# Or install locally to workspace (i.e. not global):
+# npm install @devcontainers/cli
+```
+
+**Homebrew** _(no option for local workspace install)_
+
+```bash
+brew install devcontainer
+```
+
+### Usage
+
+```bash
+devcontainer up --workspace-folder .
+```
+
+See the [official repo](https://github.com/devcontainers/cli) for a complete reference.

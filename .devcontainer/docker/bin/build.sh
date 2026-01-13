@@ -39,6 +39,8 @@ else
   esac
 fi
 
+. "$script_dir/load_env.sh" "$script_dir/../../.."
+
 if [ -d "$last_arg" ] ; then
   DOCKER_CONTEXT="$last_arg"
 else
@@ -56,8 +58,11 @@ fi
 DOCKER_TARGET=${DOCKER_TARGET:-"devcontainer"}
 REMOTE_USER="${REMOTE_USER:-$second_arg}"
 
+REPO_NAME="${REPO_NAME:-starter-project}"
+REPO_NAMESPACE="${REPO_NAMESPACE:-stairwaytowonderland}"
+
 dockerfile_path="$DOCKER_CONTEXT/.devcontainer/docker/Dockerfile"
-docker_tag="${IMAGE_NAME}:${DOCKER_TARGET}"
+build_tag="${IMAGE_NAME}:${DOCKER_TARGET}"
 
 if [ ! -f "$dockerfile_path" ] ; then
   echo "Dockerfile not found at expected path: $dockerfile_path"
@@ -72,21 +77,23 @@ echo "Dockerfile path: $dockerfile_path"
 echo "Docker context: $DOCKER_CONTEXT"
 com=(docker build)
 com+=("-f" "$dockerfile_path")
-com+=("--label" "org.opencontainers.image.title=$docker_tag")
-com+=("--label" "org.opencontainers.image.source=https://github.com/stairwaytowonderland/starter-project")
+com+=("--label" "org.opencontainers.image.title=$build_tag")
+com+=("--label" "org.opencontainers.image.source=https://github.com/$REPO_NAMESPACE/$REPO_NAME")
 com+=("--label" "org.opencontainers.image.description=A simple Debian-based Docker image with essential development tools and Homebrew.")
 com+=("--label" "org.opencontainers.image.licenses=MIT")
 # If multi-arch, use annotations instead of labels
 # https://docs.docker.com/reference/cli/docker/buildx/build/#annotation
-# com+=("--annotation" "org.opencontainers.image.title=$docker_tag")
-# com+=("--annotation" "org.opencontainers.image.source=https://github.com/stairwaytowonderland/starter-project")
+# com+=("--annotation" "org.opencontainers.image.title=$build_tag")
+# com+=("--annotation" "org.opencontainers.image.source=https://github.com/$REPO_NAMESPACE/$REPO_NAME")
 # com+=("--annotation" "org.opencontainers.image.description=A simple Debian-based Docker image with essential development tools and Homebrew.")
 # com+=("--annotation" "org.opencontainers.image.licenses=MIT")
 com+=("--target" "$DOCKER_TARGET")
-com+=("-t" "$docker_tag")
+com+=("-t" "$build_tag")
 if [ -n "$REMOTE_USER" ] ; then
   com+=("--build-arg" "USERNAME=$REMOTE_USER")
 fi
+com+=("--build-arg" "REPO_NAME=$REPO_NAME")
+com+=("--build-arg" "REPO_NAMESPACE=$REPO_NAMESPACE")
 for arg in "$@" ; do
   if [ "$arg" != "$DOCKER_CONTEXT" ] ; then
     com+=("$arg")
