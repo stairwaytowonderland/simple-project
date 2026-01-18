@@ -214,5 +214,9 @@ venv.bak/
 
 # --------------------------------
 
-# User
+# Project-specific ignores
 test.sh
+*.bak
+*.old
+*.tmp
+*.private

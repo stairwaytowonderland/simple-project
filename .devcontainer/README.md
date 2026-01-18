@@ -1,23 +1,28 @@
 # Dev Container
 
-This directory contains the devcontainer.json, Docker configuration, and utility scripts for building, running, and publishing the development container image for this project.
+This directory contains the devcontainer.json, Docker configuration, and utility
+scripts for building, running, and publishing the development container image
+for this project.
 
 ## Folder Structure
 
-```
+```txt
 <root>
 └── .devcontainer/
     ├── docker/
-    │   ├── Dockerfile          # Multi-stage Dockerfile for building the development container
+    │   ├── Dockerfile          # Multi-stage Dockerfile
     │   ├── README.md
-    │   └── bin/                # Shell scripts for container lifecycle management
+    │   ├── bin/                # Shell scripts for container lifecycle management
+    │   ├── lib-scripts/        # Container installer scripts
+    │   └── utils/              # Container utility scripts
     ├── devcontainer.json       # VS Code Dev Container configuration
     └── README.md               # This file
 ```
 
 ## Dev Container Configuration
 
-The [devcontainer.json](devcontainer.json) file configures VS Code's development container environment. Key aspects:
+The [devcontainer.json](devcontainer.json) file configures VS Code's
+development container environment. Key aspects:
 
 ### Build Configuration
 
@@ -44,9 +49,9 @@ The [devcontainer.json](devcontainer.json) file configures VS Code's development
 
 ```jsonc
 {
-	"remoteUser": "vscode",
-	"workspaceFolder": "/home/<remoteUser>/workspace",
-	"workspaceMount": "source=${localWorkspaceFolder},target=/home/vscode/workspace,type=bind,consistency=cached"
+ "remoteUser": "vscode",
+ "workspaceFolder": "/home/<remoteUser>/workspace",
+ "workspaceMount": "source=${localWorkspaceFolder},target=/home/vscode/workspace,type=bind,consistency=cached"
 }
 ```
 
@@ -60,7 +65,7 @@ Local ssh keys will be mounted, to allow seamless integration with remote server
 
 ```jsonc
 {
-	"mounts": ["source=${localEnv:HOME}/.ssh,target=/home/vscode/.ssh,type=bind,consistency=cached"]
+ "mounts": ["source=${localEnv:HOME}/.ssh,target=/home/vscode/.ssh,type=bind,consistency=cached"]
 }
 ```
 
@@ -78,29 +83,12 @@ The configuration installs development tools via [devcontainers features](https:
 > [!NOTE]
 > See the [docker/README.md](./docker/README.md) for a complete reference.
 
-The [Dockerfile](docker/Dockerfile) uses a multi-stage build several targets.
+The [Dockerfile](docker/Dockerfile) uses a multi-stage approach to build several targets.
 
 The targets relevant to the _Dev Container_ are **`base`** and **`devcontainer`**:
 
 1. **base** - Minimal Debian-based image with essential packages (build tools, git, sudo, etc.)
 1. **devcontainer** - Extends base with a non-root user, Homebrew, and development tools
-
-### Build Arguments
-
-The Dockerfile accepts several build arguments that can be customized:
-
-| Argument     | Default        | Target | Description                            |
-| ------------ | -------------- | ------ | -------------------------------------- |
-| `IMAGE_NAME` | `ubuntu`       | base   | Base image name (must be Debian-based) |
-| `VARIANT`    | `latest`       | base   | Base image tag/version                 |
-| `USERNAME`   | `devcontainer` | base   | Non-root user name to create           |
-| `USER_UID`   | `1000`         | base   | User ID for the non-root user          |
-| `USER_GID`   | `$USER_UID`    | base   | Group ID for the non-root user         |
-
-> [!NOTE]
-> As of Ubuntu 24+, a non-root `ubuntu` user exists. The Dockerfile automatically removes the default `ubuntu` user (UID 1000) to avoid conflicts when creating a custom user.
->
-> See the [official docs](https://code.visualstudio.com/remote/advancedcontainers/add-nonroot-user) for more details on non-root users.
 
 ## CLI Tool
 
@@ -110,7 +98,7 @@ See the [official repo](https://github.com/devcontainers/cli) for a complete ref
 
 ### Install
 
-**npm**
+#### npm
 
 ```bash
 npm install -g @devcontainers/cli
@@ -119,7 +107,10 @@ npm install -g @devcontainers/cli
 # npm install @devcontainers/cli
 ```
 
-**Homebrew** _(no option for local workspace install)_
+#### Homebrew
+
+> [!NOTE]
+> No option for local workspace install
 
 ```bash
 brew install devcontainer

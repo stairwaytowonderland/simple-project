@@ -9,3 +9,18 @@ indent_size = 4
 
 [Dockerfile]
 indent_size = 2
+
+[*.sh]
+# shfmt settings
+## --language-dialect
+shell_variant      = bash  # posix
+simplify           = true
+binary_next_line   = true
+indent_next_level  = true
+## --case-indent
+switch_case_indent = true
+space_redirects    = true
+keep_padding       = true
+## --func-next-line
+# function_next_line = true
+# minify             = true

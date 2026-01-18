@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC1091
+
 # ./.devcontainer/docker/bin/build.sh \
 #   starter-project \
 #   --build-arg USERNAME=vscode \
@@ -20,40 +22,39 @@ script_dir="$(cd "$(dirname "$script_name")" && pwd)"
 # ---------------------------------------
 
 # Specify last argument as context if it's a directory
-last_arg="${@: -1}"
+last_arg="${*: -1}"
 # Parse first argument as IMAGE_NAME, second as REMOTE_USER (if not a build-arg or option)
 first_arg="${1-}"
 [ -z "$first_arg" ] || shift
 # Check if next argument begins with '-' (indicating a build-arg or option)
 # (if so, do not consume it as the second argument)
 second_arg=""
-flag=false
 if [ $# -gt 0 ]; then
     case "$1" in
-    -*) ;;
-    "$last_arg"*)
-        [ $# -gt 1 ] || {
+        -*) ;;
+        "$last_arg"*)
+            [ $# -gt 1 ] || {
+                second_arg="$1"
+                shift
+                last_arg=""
+            }
+            ;;
+        *)
             second_arg="$1"
             shift
-            last_arg=""
-        }
-        ;;
-    *)
-        second_arg="$1"
-        shift
-        ;;
+            ;;
     esac
 else
     case "$first_arg" in
-    "$last_arg"*) last_arg="" ;;
+        "$last_arg"*) last_arg="" ;;
     esac
 fi
 
 . "$script_dir/load-env.sh" "$script_dir/.."
 
 # Default repository info (must be provided as environment variables or build args)
-REPO_NAME="${REPO_NAME}"
-REPO_NAMESPACE="${REPO_NAMESPACE}"
+REPO_NAME="${REPO_NAME-}"
+REPO_NAMESPACE="${REPO_NAMESPACE-}"
 
 # Determine Docker context
 if [ -d "$last_arg" ]; then
@@ -71,9 +72,9 @@ if [ -z "$IMAGE_NAME" ]; then
     echo "Usage: $0 <image-name[:build_target]> [build-args...] [options] [context]"
     exit 1
 fi
-if awk -F':' '{print $2}' <<<"$IMAGE_NAME" >/dev/null 2>&1; then
-    DOCKER_TARGET="$(awk -F':' '{print $2}' <<<"$IMAGE_NAME")"
-    IMAGE_NAME="$(awk -F':' '{print $1}' <<<"$IMAGE_NAME")"
+if awk -F':' '{print $2}' <<< "$IMAGE_NAME" > /dev/null 2>&1; then
+    DOCKER_TARGET="$(awk -F':' '{print $2}' <<< "$IMAGE_NAME")"
+    IMAGE_NAME="$(awk -F':' '{print $1}' <<< "$IMAGE_NAME")"
 fi
 DOCKER_TARGET=${DOCKER_TARGET:-"devcontainer"}
 # Determine REMOTE_USER (the devcontainer non-root user, e.g., 'vscode' or 'devcontainer')
@@ -102,7 +103,7 @@ com+=("-t" "$build_tag")
 if [ -n "$REMOTE_USER" ]; then
     com+=("--build-arg" "USERNAME=$REMOTE_USER")
 fi
-# com+=("--build-arg" "PYTHON_VERSION=${PYTHON_VERSION:-devcontainer}")
+com+=("--build-arg" "PYTHON_VERSION=${PYTHON_VERSION:-latest}")
 com+=("--build-arg" "REPO_NAME=$REPO_NAME")
 com+=("--build-arg" "REPO_NAMESPACE=$REPO_NAMESPACE")
 com+=("--build-arg" "TIMEZONE=${TIMEZONE:-America/Chicago}")

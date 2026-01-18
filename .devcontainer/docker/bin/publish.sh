@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC1091
+
 # ./.devcontainer/docker/bin/publish.sh \
 #   stairwaytowonderland
 
@@ -33,9 +35,9 @@ if [ -z "$IMAGE_NAME" ]; then
     echo "Usage: $0 <image-name[:build_target]> [github-username] [image-version]"
     exit 1
 fi
-if awk -F':' '{print $2}' <<<"$IMAGE_NAME" >/dev/null 2>&1; then
-    DOCKER_TARGET="$(awk -F':' '{print $2}' <<<"$IMAGE_NAME")"
-    IMAGE_NAME="$(awk -F':' '{print $1}' <<<"$IMAGE_NAME")"
+if awk -F':' '{print $2}' <<< "$IMAGE_NAME" > /dev/null 2>&1; then
+    DOCKER_TARGET="$(awk -F':' '{print $2}' <<< "$IMAGE_NAME")"
+    IMAGE_NAME="$(awk -F':' '{print $1}' <<< "$IMAGE_NAME")"
 fi
 DOCKER_TARGET=${DOCKER_TARGET:-"devcontainer"}
 # Determine GITHUB_USER
@@ -52,7 +54,7 @@ if [ $# -gt 0 ]; then
     IMAGE_VERSION="${1-}"
     shift
 fi
-IMAGE_VERSION=${IMAGE_VERSION:-"latest"}
+IMAGE_VERSION="${IMAGE_VERSION:-latest}"
 
 build_tag="${IMAGE_NAME}:${DOCKER_TARGET}"
 docker_tag="${IMAGE_NAME}-${DOCKER_TARGET}:${IMAGE_VERSION}"
@@ -67,11 +69,11 @@ echo "Tagging Docker image for GitHub Container Registry..."
 )
 (
     set -x
-    docker rmi "$(docker images --filter label="org.opencontainers.image.title=${build_tag}" --filter dangling=true -q)" 2>/dev/null || true
+    docker rmi "$(docker images --filter label="org.opencontainers.image.title=${build_tag}" --filter dangling=true -q)" 2> /dev/null || true
 )
 
 echo "Logging in to GitHub Container Registry..."
-echo $CR_PAT | docker login ghcr.io -u $GITHUB_USER --password-stdin
+echo "$CR_PAT" | docker login ghcr.io -u "$GITHUB_USER" --password-stdin
 
 echo "Publishing Docker image to GitHub Container Registry..."
 com=(docker push)

@@ -10,7 +10,10 @@
 		"bierner.markdown-preview-github-styles",
 		"bierner.markdown-yaml-preamble",
 		"bpruitt-goddard.mermaid-markdown-syntax-highlighting",
+		"cloudbyte.better-byte",
 		"dbaeumer.vscode-eslint",
+		"donjayamanne.githistory",
+		"eamodio.gitlens",
 		"editorconfig.editorconfig",
 		"esbenp.prettier-vscode",
 		"formulahendry.docker-explorer",
@@ -19,6 +22,7 @@
 		"kddejong.vscode-cfn-lint",
 		"mechatroner.rainbow-csv",
 		"mhutchie.git-graph",
+		"mkhl.shfmt", // Requires shfmt installation
 		"ms-azuretools.vscode-containers",
 		"ms-azuretools.vscode-docker",
 		"ms-python.black-formatter",
@@ -31,14 +35,14 @@
 		"ms-vscode-remote.remote-ssh",
 		"ms-vscode-remote.remote-ssh-edit",
 		"ms-vscode.remote-explorer",
-		"samuelcolvin.jinjahtml",
 		"redhat.vscode-yaml",
 		"rodolphebarbanneau.python-docstring-highlighter",
-		// "streetsidesoftware.code-spell-checker",
+		"samuelcolvin.jinjahtml",
+		"streetsidesoftware.code-spell-checker",
 		"tamasfe.even-better-toml",
+		"timonwong.shellcheck",
 		"tomasdahlqvist.markdown-admonitions",
 		"yahyabatulu.vscode-markdown-alert",
-		"cloudbyte.better-byte",
-		"mkhl.shfmt"
+		"yzhang.markdown-all-in-one"
 	]
 }

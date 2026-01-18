@@ -6,21 +6,30 @@ _TODO_: Add complete details for each build target.
 
 ## Folder Structure
 
-```
+```txt
 <root>
 └── .devcontainer/
     └── docker/
-        ├── .env                # Your .env file (not in version control)
-        ├── Dockerfile          # Multi-stage Dockerfile for building the development container
-        ├── README.md           # This file
-        ├── sample.env          # The sample env file to be copied
-        └── bin/                # Shell scripts for container lifecycle management
-            ├── build.sh
-            ├── clean.sh
-            ├── exec-com.sh
-            ├── load-env.sh
-            ├── publish.sh
-            └── run.sh
+        ├── .editorconfig
+        ├── .env                      # Your .env file (not in version control)
+        ├── Dockerfile                # Multi-stage Dockerfile
+        ├── README.md                 # This file
+        ├── sample.env                # The sample env file to be copied'
+        ├── bin/                      # Shell scripts for container lifecycle management
+        │   ├── build.sh
+        │   ├── clean.sh
+        │   ├── exec-com.sh
+        │   ├── load-env.sh
+        │   ├── publish.sh
+        │   └── run.sh
+        ├── lib-scripts/              # Container installer scripts
+        │   ├── cloud-cli-tools.sh
+        │   ├── common-helpers.sh
+        │   ├── common-utils.sh
+        │   └── python-helpers.sh
+        └── utils/                    # Container utility scripts
+            ├── post-starte.sh
+            └── start-code-server.sh
 ```
 
 ## Environment Variables
@@ -32,12 +41,18 @@ _TODO_: Add complete details for each build target.
     ```
 
 1. Now update the `.env` that was just created with the relevant information.
-    - **GITHUB_REPO**: Should be the name of your repository (e.g. if the url is https://github.com/octocat/Hello-World, `GITHUB_REPO` would be _'Hello-World'_).
-    - **GITHUB_NAMESPACE**: Should be namespace owner of the repo (e.g. if the url is https://github.com/octocat/Hello-World, `GITHUB_NAMEPSACE` would be _'octocat'_)
-    - **GITHUB_TOKEN**: The access token used to [publish](#publishsh) your image to the Github package registry.
+    - **GITHUB_REPO**: Should be the name of your repository
+        (e.g. if the url is <https://github.com/octocat/Hello-World>,
+        `GITHUB_REPO` would be _'Hello-World'_).
+    - **GITHUB_NAMESPACE**: Should be namespace owner of the repo
+        (e.g. if the url is <https://github.com/octocat/Hello-World>,
+        `GITHUB_NAMEPSACE` would be _'octocat'_)
+    - **GITHUB_TOKEN**: The access token used to [publish](#publishsh)
+        your image to the Github package registry.
 
 > [!TIP]
-> Optionally, manually load the `.env` file into your environment (not needed since the provided scripts will load the file):
+> Optionally, manually load the `.env` file into your environment
+> (not needed since the provided scripts will load the file):
 >
 > ```bash
 > # ... load .env file, exporting all variables
@@ -46,10 +61,14 @@ _TODO_: Add complete details for each build target.
 
 ## Build Targets
 
-1. **base** - Minimal Debian-based image with essential packages (build tools, git, sudo, etc.)
-1. **devcontainer** - Extends base with a non-root user, Homebrew, and development tools
-1. **codeserver** - A [Coder (code-server)](https://coder.com/docs/code-server) instance (_experimental_)
-1. **production** - Minimal production image based on base (includes tini for proper signal handling)
+1. **base** - Minimal Debian-based image with essential packages
+    (build tools, git, sudo, etc.)
+1. **devcontainer** - Extends base with a non-root user, Homebrew,
+    and development tools
+1. **codeserver** - A [Coder (code-server)](https://coder.com/docs/code-server)
+    instance (_experimental_)
+1. **production** - Minimal production image based on base
+    (includes tini for proper signal handling)
 
 ## Build Arguments
 
@@ -67,9 +86,11 @@ The Dockerfile accepts several build arguments that can be customized:
 | `BIND_ADDR`      | `0.0.0.0:8080`         | codeserver | Group ID for the non-root user         |
 
 > [!NOTE]
-> As of Ubuntu 24+, a non-root `ubuntu` user exists. The Dockerfile automatically removes the default `ubuntu` user (UID 1000) to avoid conflicts when creating a custom user.
+> As of Ubuntu 24+, a non-root `ubuntu` user exists. The Dockerfile automatically removes
+> the default `ubuntu` user (UID 1000) to avoid conflicts when creating a custom user.
 >
-> See the [official docs](https://code.visualstudio.com/remote/advancedcontainers/add-nonroot-user) for more details on non-root users.
+> See the [official docs](https://code.visualstudio.com/remote/advancedcontainers/add-nonroot-user)
+> for more details on non-root users.
 
 ## Quick Start
 
@@ -88,7 +109,7 @@ Builds the Docker image from the Dockerfile.
 
 #### <ins>Usage</ins>
 
-```
+```bash
 build.sh <image-name[:build_target]> [build-args...] [options] [context]
 ```
 
@@ -138,7 +159,7 @@ Runs the Docker container with the workspace mounted.
 
 #### <ins>Usage</ins>
 
-```
+```bash
 run.sh <image-name[:build_target]> [remote-user] [commands] [context]
 ```
 
@@ -179,11 +200,12 @@ Publishes the Docker image to GitHub Container Registry. Also performs cleanup b
 > [!NOTE]
 > In order to publish to the github package registry, an access token is **required** for authentication.
 >
-> See the [official docs](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry#authenticating-with-a-personal-access-token-classic) for more details on **authenticating with a personal access token**.
+> See the [official docs](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry#authenticating-with-a-personal-access-token-classic)
+> for more details on **authenticating with a personal access token**.
 
 #### <ins>Usage</ins>
 
-```
+```bash
 publish.sh <image-name[:build_target]> [github-username] [image-version]
 ```
 
@@ -230,11 +252,12 @@ export CR_PAT=$(gh auth token)
 
 ### clean.sh
 
-Removes all dangling (untagged) Docker images that are not associated with any container. These are typically intermediate images left over from builds or retagging operations.
+Removes all dangling (untagged) Docker images that are not associated with any container.
+These are typically intermediate images left over from builds or retagging operations.
 
 #### <ins>Usage</ins>
 
-```
+```bash
 clean.sh
 ```
 
@@ -246,7 +269,8 @@ clean.sh
 ```
 
 > [!NOTE]
-> This script is provided for convenience and removes images that are no longer tagged or referenced. The publish script automatically performs basic cleanup, so this is typically only needed for manual cleanup operations.
+> This script is provided for convenience and removes images that are no longer tagged or referenced.
+> The publish script automatically performs basic cleanup, so this is typically only needed for manual cleanup operations.
 
 ## Recommended Workflow
 

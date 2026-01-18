@@ -13,3 +13,5 @@ pnpm-lock.yaml
 # Ignore specific file types
 **/*.html
 **/*.log
+
+README.md

@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC1091
+
 # ./.devcontainer/docker/bin/run.sh \
 #   starter-project:devcontainer \
 #   vscode \
@@ -19,7 +21,7 @@ script_dir="$(cd "$(dirname "$script_name")" && pwd)"
 # Parse first argument as IMAGE_NAME, second as REMOTE_USER
 
 # Specify last argument as context if it's a directory
-last_arg="${@: -1}"
+last_arg="${*: -1}"
 
 if [ $# -lt 1 ]; then
     echo "Usage: $0 <image-name[:build_target]> [remote-user] [context]"
@@ -28,9 +30,9 @@ fi
 # Determine IMAGE_NAME and DOCKER_TARGET
 IMAGE_NAME=${IMAGE_NAME:-$1}
 shift
-if awk -F':' '{print $2}' <<<"$IMAGE_NAME" >/dev/null 2>&1; then
-    DOCKER_TARGET="$(awk -F':' '{print $2}' <<<"$IMAGE_NAME")"
-    IMAGE_NAME="$(awk -F':' '{print $1}' <<<"$IMAGE_NAME")"
+if awk -F':' '{print $2}' <<< "$IMAGE_NAME" > /dev/null 2>&1; then
+    DOCKER_TARGET="$(awk -F':' '{print $2}' <<< "$IMAGE_NAME")"
+    IMAGE_NAME="$(awk -F':' '{print $1}' <<< "$IMAGE_NAME")"
 fi
 DOCKER_TARGET=${DOCKER_TARGET:-"devcontainer"}
 if [ -d "$last_arg" ]; then
@@ -65,28 +67,32 @@ if [ "${DEV:-false}" = "true" ]; then
 fi
 while [ $# -gt 0 ]; do
     case "$1" in
-    -e)
-        com+=("-e" "$2")
-        shift 2
-        ;;
-    --env=*)
-        com+=("$1")
-        shift
-        ;;
-    *)
-        break
-        ;;
+        -e)
+            com+=("-e" "$2")
+            shift 2
+            ;;
+        --env=*)
+            com+=("$1")
+            shift
+            ;;
+        *)
+            break
+            ;;
     esac
 done
 com+=("-v" "${DOCKER_CONTEXT}:${workspace_dir}")
-if [ -d "$HOME/.ssh" ]; then
-    com+=("-v" "$HOME/.ssh:/home/${REMOTE_USER}/.ssh:ro")
-fi
-if [ -r "$HOME/.gitconfig" ]; then
-    com+=("-v" "$HOME/.gitconfig:/etc/gitconfig:ro")
-fi
-if [ "$DOCKER_TARGET" = "devcontainer" ]; then
-    com+=("-p" "0.0.0.0:8080:8080")
+if [ "$DOCKER_TARGET" = "base" ]; then
+    com+=("-v" "${DOCKER_CONTEXT}/.devcontainer/docker/lib-scripts:/tmp/lib-scripts:ro")
+else
+    if [ -d "$HOME/.ssh" ]; then
+        com+=("-v" "$HOME/.ssh:/home/${REMOTE_USER}/.ssh:ro")
+    fi
+    if [ -r "$HOME/.gitconfig" ]; then
+        com+=("-v" "$HOME/.gitconfig:/etc/gitconfig:ro")
+    fi
+    if [ "$DOCKER_TARGET" = "codeserver" ]; then
+        com+=("-p" "${HOST_IP:-0.0.0.0}:${HOST_PORT:-8080}:${CONTAINER_PORT:-8080}")
+    fi
 fi
 com+=("$docker_tag")
 

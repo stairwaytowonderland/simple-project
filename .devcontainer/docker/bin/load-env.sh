@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC1091
 
 __load_env() {
     local env_file="${1}"
 
-    if [ -f "${env_file}" -a -r "${env_file}" ]; then
+    if [ -f "${env_file}" ] && [ -r "${env_file}" ]; then
         set -a
+        # shellcheck disable=SC1090
         . "${env_file}"
         set +a
         echo "Loaded environment variables from '${env_file}'"
@@ -22,7 +24,8 @@ load_env() {
     fi
 
     local script_name="$0"
-    local script_dir="$(cd "$(dirname "$script_name")" && pwd)"
+    local script_dir
+    script_dir="$(cd "$(dirname "$script_name")" && pwd)"
     # ---------------------------------------
 
     local default_env_file="${script_dir}/../.env"

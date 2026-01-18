@@ -7,9 +7,9 @@ if [ "${#com[@]}" -eq 0 ]; then
     exit 1
 fi
 
-printf "\033[95;1m%s\033[0m\n" "$(echo ${com[@]})"
+printf "\033[95;1m%s\033[0m\n" "${com[*]}"
 
-if command -v time >/dev/null 2>&1; then
+if command -v time > /dev/null 2>&1; then
     # TIMEFORMAT="Elapsed time: %lR seconds"
     TIMEFORMAT=$'\nElapsed time: %lR seconds'
     time (
