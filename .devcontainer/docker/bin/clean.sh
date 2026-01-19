@@ -15,19 +15,69 @@ script_name="$0"
 script_dir="$(cd "$(dirname "$script_name")" && pwd)"
 # ---------------------------------------
 
-# docker rmi $(docker image ls -f dangling=true -q)
-echo "Removing dangling Docker images..."
-com=(docker rmi)
-com+=("$(docker image ls -f dangling=true -q)")
+simple_cleanup() {
+    echo "Performing simple Docker cleanup..."
 
-# Deep clean docker system (use with caution)
-# echo "Cleaning up Docker system (this may take a while)..."
-# com=(docker system)
-# com+=(prune)
-# com+=(-a)
-# com+=(--volumes)
+    # Remove dangling images
+    (
+        set -x
+        docker rmi "$(docker image ls -f dangling=true -q)"
+    ) || true
 
-set -- "${com[@]}"
-. "$script_dir/exec-com.sh" "$@"
+    # Remove stopped containers
+    (
+        set -x
+        docker rm "$(docker ps -a -f status=exited -q)"
+    ) || true
+
+    # Remove unused volumes
+    (
+        set -x
+        docker volume rm "$(docker volume ls -f dangling=true -q)"
+    ) || true
+}
+
+system_cleanup() {
+    echo "Cleaning up Docker system (this may take a while)..."
+
+    # Deep clean docker system (use with caution)
+    com=(docker system)
+    com+=(prune)
+    com+=(-a)
+    com+=(--volumes)
+    com+=("$@")
+
+    set -- "${com[@]}"
+    . "$script_dir/exec-com.sh" "$@"
+}
+
+clean() {
+    while [ "$#" -gt 0 ]; do
+        case "$1" in
+            --full)
+                shift
+                echo "Args remaining for full cleanup: $*"
+                if [ "$#" -gt 0 ] && [ "$1" = "--" ]; then
+                    shift
+                fi
+                system_cleanup "$@"
+                break
+                ;;
+            --*)
+                shift
+                simple_cleanup
+                break
+                ;;
+            *)
+                echo "Unknown optionx: $1"
+                exit 1
+                ;;
+        esac
+    done
+}
+
+[ "$#" -gt 0 ] || set -- --simple
+
+clean "$@"
 
 echo "Done! Docker cleanup complete."

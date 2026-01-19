@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/sh
 # shellcheck disable=SC2174
 
 set -e

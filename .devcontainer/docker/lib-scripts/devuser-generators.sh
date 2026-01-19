@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/sh
 
 touch "$PIPX" \
     && chmod +x "$PIPX" \
@@ -7,7 +7,7 @@ touch "$PIPX" \
 
 # Get the path to pipx binary
 
-if type pipx >/dev/null >/dev/null 2>&1; then
+if type pipx >/dev/null 2>&1; then
   _pipx="\$(which pipx)"
 elif type "\$(dirname "$BREW")/pipx" >/dev/null 2>&1; then
   _pipx="\$(dirname "$BREW")/pipx"

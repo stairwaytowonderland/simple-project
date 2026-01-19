@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
+
 set -e
+
+$LOGGER "Running post-start script..."
 
 # Display welcome message
 clear
@@ -13,7 +16,7 @@ echo "Homebrew: $(brew --version | head -n 1)"
 echo "Python: $(python3 --version)"
 # echo "Node.js: $(node --version)"
 # echo "npm: $(npm --version)"
-echo "Pre-commit: $(pre-commit --version)"
+# echo "Pre-commit: $(pre-commit --version)"
 echo ""
 
 # Display environment information
@@ -27,5 +30,3 @@ echo ""
 if command -v devcontainer-info &> /dev/null; then
     devcontainer-info
 fi
-
-# bash -l

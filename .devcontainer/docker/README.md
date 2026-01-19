@@ -26,7 +26,9 @@ _TODO_: Add complete details for each build target.
         │   ├── cloud-cli-tools.sh
         │   ├── common-generators.sh
         │   ├── common-utils.sh
-        │   └── devuser-generators.sh
+        │   ├── devtools-utils.sh
+        │   ├── devtools-generators.sh
+        │   └── devuser-utils.sh
         └── utils/                    # Container utility scripts
             ├── post-starte.sh
             └── start-code-server.sh

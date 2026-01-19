@@ -47,7 +47,7 @@ USER root
 
 # Update and install essential packages
 RUN chmod +x /tmp/lib-scripts/*.sh \
-  && sed -i "s|\$LOGGER|$LOGGER|g" /tmp/lib-scripts/*-utils.sh \
+  && sed -i "s|\$LOGGER|$LOGGER|g" /tmp/lib-scripts/*.sh \
   && /tmp/lib-scripts/common-generators.sh && \
   # Check for mandatory build arguments (https://stackoverflow.com/a/44791255)
   : "${REPO_NAME:?Build argument needs to be set and non-empty.}" \
@@ -63,8 +63,13 @@ RUN chmod +x /tmp/lib-scripts/*.sh \
   ln -sf /usr/share/zoneinfo/$TIMEZONE /etc/localtime \
     && dpkg-reconfigure -f noninteractive tzdata \
     && $LOGGER "Timezone set to '$TIMEZONE'" \
-    # Enable bash completion for root user
-    && cat >> /root/.bashrc <<EOF
+  # Add useful bash aliases system-wide
+  && if ! type ll >/dev/null 2>&1; then \
+    echo >> /etc/bash.bashrc && \
+    echo "alias ll='ls -alF' " >> /etc/bash.bashrc; \
+  fi \
+  # Enable bash completion for root user
+  && cat >> /root/.bashrc <<EOF
 if [ -f /etc/bash_completion ] && ! shopt -oq posix; then
    . /etc/bash_completion
 fi
@@ -106,6 +111,7 @@ RUN if [ "$IMAGE_NAME" = "ubuntu" ]; then \
   && /tmp/lib-scripts/devuser-utils.sh \
   # Cleanup
   && apt-get clean -y \
+  && apt-get -y autoremove \
   && rm -rf /var/lib/apt/lists/*
 
 RUN cat <<EOF | tee -a /etc/skel/.bashrc /root/.bashrc > /dev/null
@@ -192,9 +198,9 @@ RUN mkdir -p /home/$USERNAME/.ssh \
 USER $USERNAME
 WORKDIR /home/$USERNAME
 
-RUN NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" \
-  # Verify Homebrew installation
-  && $BREW --version
+RUN NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+# RUN git --version && $BREW --version
 
 # Set USER back to root for next stage
 USER root
@@ -232,13 +238,14 @@ RUN test "$PYTHON_VERSION" = "devcontainer" || test "$PYTHON_VERSION" = "$USERNA
   # Install pipx after Python
   && if [ "$PYTHON_VERSION" != "system" ] ; then \
     $BREW install pipx; \
-  fi
+  fi \
   # Configure pipx, and install Poetry and uv after ensuring pipx is installed
-
-RUN $($PIPX) install poetry uv
-
-# Verify installations
-RUN git --version && python3 --version
+  && if $PIPX; then \
+    $($PIPX) install \
+      pre-commit \
+      poetry \
+      uv; \
+    fi
 
 ENTRYPOINT ["/docker-entrypoint.sh"]
 
@@ -254,17 +261,17 @@ FROM devtools AS cloudtools
 
 USER root
 
-RUN sed -i "s|\$USERNAME|$USERNAME|g" /tmp/lib-scripts/cloud-cli-tools.sh \
-  && /tmp/lib-scripts/cloud-cli-tools.sh
-
-# Cleanup
-RUN apt-get clean -y \
+RUN /tmp/lib-scripts/cloud-cli-tools.sh \
+  # Cleanup
+  && apt-get clean -y \
   && rm -rf /var/lib/apt/lists/* \
   && rm -rf /tmp/lib-scripts/
 
 USER $USERNAME
 
-RUN $($PIPX) install cfn-lint
+RUN if $PIPX; then \
+    $($PIPX) install cfn; \
+  fi
 
 # Verify installations
 RUN aws --version && terraform version
@@ -288,14 +295,14 @@ USER root
 
 RUN apt-get update \
   && apt-get -y install --no-install-recommends tini \
+  && chmod +x /usr/local/bin/start-code-server \
+  && sed -i "s|\$LOGGER|$LOGGER|g" /usr/local/bin/start-code-server \
+  && sed -i "s|\$PASSGEN|$PASSGEN|g" /usr/local/bin/start-code-server \
+  && sed -i "s|\$DEV|$DEV|g" /usr/local/bin/start-code-server \
+  # Cleanup
   && apt-get clean -y \
   && rm -rf /var/lib/apt/lists/* \
   && rm -rf /tmp/lib-scripts/
-
-RUN chmod +x /usr/local/bin/start-code-server \
-  && sed -i "s|\$LOGGER|$LOGGER|g" /usr/local/bin/start-code-server \
-  && sed -i "s|\$PASSGEN|$PASSGEN|g" /usr/local/bin/start-code-server \
-  && sed -i "s|\$DEV|$DEV|g" /usr/local/bin/start-code-server
 
 USER $USERNAME
 
@@ -336,6 +343,7 @@ RUN apt-get update \
     shfmt \
     openssh-client \
   && chmod +x /usr/local/bin/post-start \
+  && sed -i "s|\$LOGGER|$LOGGER|g" /usr/local/bin/post-start \
   # Cleanup
   && apt-get clean -y \
   && rm -rf /var/lib/apt/lists/* \
@@ -344,6 +352,9 @@ RUN apt-get update \
 # Switch to non-root user
 USER $USERNAME
 # WORKDIR /home/$USERNAME
+
+RUN ! $PIPX || \
+  $($PIPX) install pre-commit
 
 # Set the default working directory
 WORKDIR $DEFAULT_WORKSPACE

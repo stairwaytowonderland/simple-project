@@ -1,7 +1,7 @@
 {
 	"name": "VSCode Dev Container",
-	"image": "ghcr.io/stairwaytowonderland/starter-project-devcontainer:latest",
-	// "image": "ghcr.io/stairwaytowonderland/starter-project-devcontainer:latest-bookworm-slim",
+	"image": "ghcr.io/stairwaytowonderland/starter-project:latest",
+	// "image": "ghcr.io/stairwaytowonderland/starter-project:latest-bookworm-slim",
 	// "build": {
 	// 	"dockerfile": "./docker/Dockerfile",
 	// 	"target": "devcontainer",
@@ -13,6 +13,7 @@
 	// 		"USER_UID": "1000",
 	// 		"USER_GID": "1000",
 	// 		"TIMEZONE": "America/Chicago",
+
 	// 		* "devcontainer", "system", "latest", or specific version like "3.12"
 	// 		* Use "devcontainer" if using the Python devcontainer feature
 	// 		"PYTHON_VERSION": "devcontainer"
@@ -38,9 +39,9 @@
 		/*
 			Version control features
 		*/
+		"ghcr.io/devcontainers-extra/features/pre-commit:2": {},
 		"ghcr.io/devcontainers/features/github-cli:1": {}
-		// *NOTE*: glab CLI is not yet available for debian:trixie
-		// "ghcr.io/devcontainers/features/glab-cli": {},
+		// "ghcr.io/skriptfabrik/devcontainer-features/gitlab-cli:1": {}
 		/*
 			Systems tools feature
 			Use "none" for common-utils username to skip creating a non-root user if user is already created in Dockerfile
@@ -121,21 +122,22 @@
 				// ---------------------------------------
 				// Markdown extensions are commented out for faster builds; enable as needed
 				// ---------------------------------------
-				// "bierner.github-markdown-preview",
+				"bierner.github-markdown-preview",
 				// "bierner.markdown-checkbox",
-				// "bierner.markdown-emoji",
+				"bierner.markdown-emoji",
 				// "bierner.markdown-footnotes",
 				// "bierner.markdown-mermaid",
-				// "bierner.markdown-preview-github-styles",
+				"bierner.markdown-preview-github-styles",
 				// "bierner.markdown-yaml-preamble",
 				// "bpruitt-goddard.mermaid-markdown-syntax-highlighting",
 				// "streetsidesoftware.code-spell-checker",
 				// "tomasdahlqvist.markdown-admonitions",
-				// "yahyabatulu.vscode-markdown-alert",
+				"yahyabatulu.vscode-markdown-alert",
 				// ---------------------------------------
 				// Non-essential extensions are commented out for faster builds; enable as needed
 				// ---------------------------------------
-				// "github.vscode-github-actions",
+				// "GitLab.gitlab-workflow",
+				"github.vscode-github-actions",
 				// "mechatroner.rainbow-csv",
 				// "ms-vscode.remote-explorer",
 				// "samuelcolvin.jinjahtml",
@@ -151,6 +153,7 @@
 				"editorconfig.editorconfig",
 				"esbenp.prettier-vscode",
 				"mhutchie.git-graph",
+				"mkhl.shfmt", // Requires shfmt installation
 				"ms-azuretools.vscode-containers", // Formatting for Dockerfiles
 				"ms-azuretools.vscode-docker",
 				"ms-python.python",
@@ -161,7 +164,8 @@
 				"ms-vscode-remote.remote-ssh-edit",
 				"redhat.vscode-yaml",
 				"tamasfe.even-better-toml",
-				"timonwong.shellcheck"
+				"timonwong.shellcheck",
+				"yzhang.markdown-all-in-one"
 			],
 
 			// Set *default* container specific settings.json values on container create
@@ -172,7 +176,15 @@
 				"terminal.integrated.defaultProfile.linux": "bash",
 				"terminal.integrated.profiles.linux": {
 					"bash": {
-						"path": "/bin/bash"
+						"path": "/usr/bin/bash",
+						"icon": "terminal",
+						"color": "terminal.ansiGreen"
+					},
+					"sh": {
+						"path": "/usr/bin/sh",
+						"icon": "terminal-linux",
+						"color": "terminal.ansiYellow",
+						"overrideName": true
 					}
 				},
 				"python.defaultInterpreterPath": "/usr/bin/python3",

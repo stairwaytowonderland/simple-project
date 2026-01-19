@@ -61,7 +61,7 @@ fi
 IMAGE_VERSION="${IMAGE_VERSION:-latest}"
 
 if [ "$BASE_IMAGE_VARIANT" = "latest" ]; then
-    build_tag="${IMAGE_NAME}:${DOCKER_TARGET}-${BASE_IMAGE_NAME}"
+    build_tag="${IMAGE_NAME}:${DOCKER_TARGET}-${BASE_IMAGE_NAME}-${BASE_IMAGE_VARIANT}"
     docker_tag="${IMAGE_NAME}:${BASE_IMAGE_NAME}-${BASE_IMAGE_VARIANT}"
 else
     build_tag="${IMAGE_NAME}:${DOCKER_TARGET}-${BASE_IMAGE_VARIANT}"

@@ -17,6 +17,7 @@
 		"editorconfig.editorconfig",
 		"esbenp.prettier-vscode",
 		"formulahendry.docker-explorer",
+		"GitLab.gitlab-workflow",
 		"github.vscode-github-actions",
 		"hashicorp.terraform",
 		"kddejong.vscode-cfn-lint",

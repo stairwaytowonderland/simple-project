@@ -44,11 +44,21 @@
 		".terraform.lock.hcl": true
 	},
 
-	// Terminal settings
-	"terminal.integrated.defaultProfile.linux": "bash",
-	"terminal.integrated.profiles.linux": {
+	/*
+		Terminal settings
+	*/
+	"terminal.integrated.defaultProfile.osx": "bash",
+	"terminal.integrated.profiles.osx": {
 		"bash": {
-			"path": "${env:SHELL}"
+			"path": "${env:SHELL}",
+			"icon": "terminal",
+			"color": "terminal.ansiGreen"
+		},
+		"sh": {
+			"path": "/bin/sh",
+			"icon": "terminal-linux",
+			"color": "terminal.ansiYellow",
+			"overrideName": true
 		}
 	},
 
