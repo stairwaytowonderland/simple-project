@@ -16,6 +16,7 @@ _TODO_: Add complete details for each build target.
         ├── README.md                 # This file
         ├── sample.env                # The sample env file to be copied'
         ├── bin/                      # Shell scripts for container lifecycle management
+        │   ├── all.sh
         │   ├── build.sh
         │   ├── clean.sh
         │   ├── exec-com.sh
@@ -32,7 +33,7 @@ _TODO_: Add complete details for each build target.
         │   ├── git-install.sh
         │   └── user-setup.sh
         └── utils/                    # Container utility scripts
-            ├── post-starte.sh
+            ├── post-start.sh
             └── start-code-server.sh
 ```
 

@@ -85,6 +85,7 @@ ARG DEFAULT_PASS_LENGTH=32
 ARG DEV=false
 ENV DEV=$DEV
 # Package management control
+ARG HOMEBREW_ENABLED=false
 ARG NO_BREW_UPDATE=$DEV
 
 # Set default Git version to install
@@ -123,7 +124,8 @@ RUN /tmp/lib-scripts/devuser-generators.sh \
 USER $USERNAME
 WORKDIR /home/$USERNAME
 
-RUN NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+RUN test "$HOMEBREW_ENABLED" != "true" \
+  || NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 
 # Set default command to login shell
 CMD ["/bin/bash"]
@@ -165,11 +167,11 @@ WORKDIR $DEFAULT_WORKSPACE
 # If pipx is installed, it implies a user-managed Python environment; use it to install pre-commit
 # Otherwise, install as a feature via devcontainer.json
 # Use flag (build-arg) to install pre-commit with Homebrew to keep base image size down (Homebrew will install Python dependencies)
-RUN if $PIPX; then \
+RUN if $PIPX 2>/dev/null; then \
     $($PIPX) install pre-commit; \
   else \
     test "$PRE_COMMIT_ENABLED" != "true" \
-      || $BREW install pre-commit; \
+      || { test "$HOMEBREW_ENABLED" != "true" || $BREW install pre-commit; }; \
   fi
 
 LABEL org.opencontainers.image.ref.name="$REPO_NAME:devcontainer-$BASE_IMAGE"
@@ -202,26 +204,28 @@ USER $USERNAME
 # Install Python via Homebrew, pipx, Poetry, uv, and other dev tools via Homebrew.
 # Do nothing if PYTHON_VERSION is 'devcontainer' or matches the USERNAME.
 # USERNAME cannot be 'system' or 'latest'.
-RUN test "$NO_BREW_UPDATE" = "true" || $BREW update \
-  && if [ "$PYTHON_VERSION" = "latest" ] ; then \
-    $BREW install python3; \
-  elif [ "$PYTHON_VERSION" != "devcontainer" ] && [ "$PYTHON_VERSION" != "system" ] \
-    && [ "$PYTHON_VERSION" != "$USERNAME" ] \
-    && [ "$(python3 --version | awk -F. '{print $1"."$2}')" != "Python ${PYTHON_VERSION}" ] ; then \
-    $BREW install python@${PYTHON_VERSION}; \
-  fi \
-  # Install pipx after Python
-  && if [ "$PYTHON_VERSION" != "system" ] ; then \
-    # Homebrew installs the latest version of Python if Python not already installed (by Homebrew)
-    $BREW install pipx; \
-  fi \
-  # Configure pipx, and install Poetry and uv after ensuring pipx is installed
-  && if $PIPX; then \
-    $($PIPX) install \
-      pre-commit \
-      poetry \
-      uv; \
-    fi
+RUN if  [ "$HOMEBREW_ENABLED" = "true" ]; then \
+    test "$NO_BREW_UPDATE" = "true" || $BREW update \
+    && if [ "$PYTHON_VERSION" = "latest" ] ; then \
+      $BREW install python3; \
+    elif [ "$PYTHON_VERSION" != "devcontainer" ] && [ "$PYTHON_VERSION" != "system" ] \
+      && [ "$PYTHON_VERSION" != "$USERNAME" ] \
+      && [ "$(python3 --version | awk -F. '{print $1"."$2}')" != "Python ${PYTHON_VERSION}" ] ; then \
+      $BREW install python@${PYTHON_VERSION}; \
+    fi \
+    # Install pipx after Python
+    && if [ "$PYTHON_VERSION" != "system" ] ; then \
+      # Homebrew installs the latest version of Python if Python not already installed (by Homebrew)
+      $BREW install pipx; \
+    fi \
+    # Configure pipx, and install Poetry and uv after ensuring pipx is installed
+    && if $PIPX 2>/dev/null; then \
+      $($PIPX) install \
+        pre-commit \
+        poetry \
+        uv; \
+      fi; \
+  fi
 
 ENTRYPOINT ["/docker-entrypoint.sh"]
 
@@ -278,8 +282,15 @@ RUN apt-get update \
 
 USER $USERNAME
 
-RUN test "$NO_BREW_UPDATE" = "true" || $BREW update \
-  && $BREW install code-server
+RUN curl -fsSL https://code-server.dev/install.sh | sh
+
+# RUN if  [ "$HOMEBREW_ENABLED" = "true" ]; then \
+#     test "$NO_BREW_UPDATE" = "true" || $BREW update \
+#       && $BREW install code-server; \
+#   else \
+#     LEVEL=error $LOGGER "Homebrew is required but not installed." \
+#       && exit 1; \
+#   fi
 
 EXPOSE 8080
 
@@ -288,8 +299,8 @@ WORKDIR $DEFAULT_WORKSPACE
 ENTRYPOINT ["/usr/bin/tini", "--"]
 
 # CMD ["/start-code-server.sh"]
-CMD ["/bin/sh", "-c", "start-code-server --config-only && set -x ; exec \
-    /home/linuxbrew/.linuxbrew/opt/code-server/bin/code-server \
+CMD ["/bin/sh", "-c", "start-code-server --config-only && set -x ; \
+    exec code-server \
       --bind-addr $BIND_ADDR \
       --extensions-dir \
       $(dirname $CODE_SERVER_EXTENSIONS) \

@@ -17,11 +17,14 @@
 	// 		"USERNAME": "vscode",
 	// 		"USER_UID": "1000",
 	// 		"USER_GID": "1000",
-	// 		"TIMEZONE": "America/Chicago",
+	// 		"TIMEZONE": "America/Chicago"
+
+	// 		* Enable Homebrew installation and usage in the container (disabled by default)
+	// 		// "HOMEBREW_ENABLED": "true",
 
 	// 		* NOTE: "devcontainer", "system", "latest", or specific version like "3.12"
 	// 		* Use "devcontainer" if using the Python devcontainer feature
-	// 		"PYTHON_VERSION": "devcontainer"
+	// 		// "PYTHON_VERSION": "devcontainer"
 	// 	}
 	// },
 	// Comment out to connect as root instead. More info: https://aka.ms/vscode-remote/containers/non-root
