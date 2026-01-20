@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC1091
 
-# ./.devcontainer/docker/bin/clean.sh
+# Basic Usage:
+# ./.devcontainer/docker/bin/clean.sh [--simple|--full [--force|-f]]
+# Example:
+# ./.devcontainer/docker/bin/clean.sh --full -f
 
 # ---------------------------------------
 set -euo pipefail

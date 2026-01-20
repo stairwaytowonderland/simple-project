@@ -18,8 +18,6 @@ script_name="$0"
 script_dir="$(cd "$(dirname "$script_name")" && pwd)"
 # ---------------------------------------
 
-# Parse first argument as IMAGE_NAME, second as REMOTE_USER
-
 # Specify last argument as context if it's a directory
 last_arg="${*: -1}"
 
@@ -41,17 +39,17 @@ if awk -F':' '{print $2}' <<< "$IMAGE_NAME" > /dev/null 2>&1; then
 fi
 DOCKER_TARGET=${DOCKER_TARGET:-"base"}
 if [ -d "$last_arg" ]; then
-    DOCKER_CONTEXT="$last_arg"
+    RUN_CONTEXT="$last_arg"
 else
-    DOCKER_CONTEXT="${DOCKER_CONTEXT:-"$script_dir/../../.."}"
+    RUN_CONTEXT="${RUN_CONTEXT:-"$script_dir/../../.."}"
 fi
-if [ ! -d "$DOCKER_CONTEXT" ]; then
-    echo "Docker context directory not found at expected path: $DOCKER_CONTEXT"
+if [ ! -d "$RUN_CONTEXT" ]; then
+    echo "Docker context directory not found at expected path: $RUN_CONTEXT"
     exit 1
 fi
 # Determine REMOTE_USER
 if [ $# -gt 0 ]; then
-    if [ "$1" != "$DOCKER_CONTEXT" ]; then
+    if [ "$1" != "$RUN_CONTEXT" ]; then
         REMOTE_USER="${1-}"
         shift
     fi
@@ -107,9 +105,9 @@ while [ $# -gt 0 ]; do
             ;;
     esac
 done
-com+=("-v" "${DOCKER_CONTEXT}:${workspace_dir}")
+com+=("-v" "${RUN_CONTEXT}:${workspace_dir}")
 if [ "$DOCKER_TARGET" = "base" ]; then
-    com+=("-v" "${DOCKER_CONTEXT}/.devcontainer/docker/lib-scripts:/tmp/lib-scripts:ro")
+    com+=("-v" "${RUN_CONTEXT}/.devcontainer/docker/lib-scripts:/tmp/lib-scripts:ro")
 else
     if [ -d "$HOME/.ssh" ]; then
         com+=("-v" "$HOME/.ssh:/home/${REMOTE_USER}/.ssh:ro")
@@ -124,7 +122,7 @@ fi
 com+=("$docker_tag")
 
 for arg in "$@"; do
-    if [ "$arg" != "$DOCKER_CONTEXT" ]; then
+    if [ "$arg" != "$RUN_CONTEXT" ]; then
         com+=("$arg")
     fi
 done

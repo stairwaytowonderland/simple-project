@@ -24,14 +24,14 @@ _TODO_: Add complete details for each build target.
         │   ├── publish.sh
         │   └── run.sh
         ├── lib-scripts/              # Container installer scripts
-        │   ├── cloud-cli-tools.sh
         │   ├── builder-generators.sh
         │   ├── builder-utils.sh
+        │   ├── cloud-cli-tools.sh
         │   ├── devtools-utils.sh
-        │   ├── devtools-generators.sh
-        │   ├── devtools-utils.sh
-        │   ├── git-install.sh
-        │   └── user-setup.sh
+        │   ├── devuser-generators.sh
+        │   ├── devuser-setup.sh
+        │   ├── devuser-utils.sh
+        │   └── git-install.sh
         └── utils/                    # Container utility scripts
             ├── post-start.sh
             └── start-code-server.sh

@@ -12,8 +12,8 @@
 	// 	"target": "cloudtools",
 	// 	"context": "..",
 	// 	"args": {
-	// 		"IMAGE_NAME": "debian",
-	// 		"VARIANT": "bookworm-slim",
+	// 		// "IMAGE_NAME": "debian",
+	// 		// "VARIANT": "bookworm-slim",
 	// 		"USERNAME": "vscode",
 	// 		"USER_UID": "1000",
 	// 		"USER_GID": "1000",

@@ -61,12 +61,12 @@ REPO_NAMESPACE="${REPO_NAMESPACE-}"
 
 # Determine Docker context
 if [ -d "$last_arg" ]; then
-    DOCKER_CONTEXT="$last_arg"
+    BUILD_CONTEXT="$last_arg"
 else
-    DOCKER_CONTEXT="${DOCKER_CONTEXT:-"$script_dir/../../.."}"
+    BUILD_CONTEXT="${BUILD_CONTEXT:-"$script_dir/../../.."}"
 fi
-if [ ! -d "$DOCKER_CONTEXT" ]; then
-    echo "Docker context directory not found at expected path: $DOCKER_CONTEXT"
+if [ ! -d "$BUILD_CONTEXT" ]; then
+    echo "Docker context directory not found at expected path: $BUILD_CONTEXT"
     exit 1
 fi
 # Determine IMAGE_NAME and DOCKER_TARGET
@@ -89,7 +89,7 @@ tag_prefix="${IMAGE_NAME}:${DOCKER_TARGET}"
 
 build_tag="${tag_prefix}-${BASE_IMAGE_VARIANT}"
 
-dockerfile_path="$DOCKER_CONTEXT/.devcontainer/docker/Dockerfile"
+dockerfile_path="$BUILD_CONTEXT/.devcontainer/docker/Dockerfile"
 
 if [ ! -f "$dockerfile_path" ]; then
     echo "Dockerfile not found at expected path: $dockerfile_path"
@@ -98,7 +98,7 @@ fi
 
 echo "Building Docker image for $DOCKER_TARGET..."
 echo "Dockerfile path: $dockerfile_path"
-echo "Docker context: $DOCKER_CONTEXT"
+echo "Docker context: $BUILD_CONTEXT"
 com=(docker build)
 com+=("-f" "$dockerfile_path")
 com+=("--label" "org.opencontainers.image.ref.name=$build_tag")
@@ -120,11 +120,11 @@ com+=("--build-arg" "REPO_NAMESPACE=$REPO_NAMESPACE")
 com+=("--build-arg" "TIMEZONE=${TIMEZONE:-America/Chicago}")
 com+=("--build-arg" "DEV=${DEV:-false}")
 for arg in "$@"; do
-    if [ "$arg" != "$DOCKER_CONTEXT" ]; then
+    if [ "$arg" != "$BUILD_CONTEXT" ]; then
         com+=("$arg")
     fi
 done
-com+=("$DOCKER_CONTEXT")
+com+=("$BUILD_CONTEXT")
 
 set -- "${com[@]}"
 . "$script_dir/exec-com.sh" "$@"

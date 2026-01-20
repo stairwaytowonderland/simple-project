@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC1091
+
+# ./.devcontainer/docker/bin/all.sh .
 
 # ---------------------------------------
 set -euo pipefail
@@ -12,30 +15,42 @@ script_name="$0"
 script_dir="$(cd "$(dirname "$script_name")" && pwd)"
 # ---------------------------------------
 
-# shellcheck disable=SC1091
+# Specify last argument as context if it's a directory
+last_arg="${*: -1}"
+
 . "$script_dir/load-env.sh" "$script_dir/.."
+
+if [ -d "$last_arg" ]; then
+    BUILD_CONTEXT="$last_arg"
+else
+    BUILD_CONTEXT="${BUILD_CONTEXT:-"$script_dir/../../.."}"
+fi
+if [ ! -d "$BUILD_CONTEXT" ]; then
+    echo "Docker context directory not found at expected path: $BUILD_CONTEXT"
+    exit 1
+fi
+
+REMOTE_USER="${REMOTE_USER:-vscode}"
 
 REPO_NAME="${REPO_NAME-}"
 REPO_NAMESPACE="${REPO_NAMESPACE-}"
-REMOTE_USER="${REMOTE_USER-}"
+bin_dir=".devcontainer/docker/bin"
 
 main() {
     # Newline-separated list of commands to run
     local all_commands=""
     while IFS= read -r cmd || [ -n "$cmd" ]; do
-        [ -z "$cmd" ] && continue
-        if [ -z "$all_commands" ]; then
-            all_commands="$cmd"
-        else
-            all_commands="$all_commands && $cmd"
-        fi
+        [ -n "$cmd" ] || continue
+        [ -n "$all_commands" ] \
+            && all_commands="$all_commands && $cmd" \
+            || all_commands="$cmd"
     done << EOF
-.devcontainer/docker/bin/build.sh $REPO_NAME $REMOTE_USER --build-arg PYTHON_VERSION=devcontainer .
-.devcontainer/docker/bin/build.sh $REPO_NAME:devtools $REMOTE_USER --build-arg PYTHON_VERSION=devcontainer .
-.devcontainer/docker/bin/build.sh $REPO_NAME:cloudtools $REMOTE_USER --build-arg PYTHON_VERSION=devcontainer .
-.devcontainer/docker/bin/publish.sh $REPO_NAME $REPO_NAMESPACE
-.devcontainer/docker/bin/publish.sh $REPO_NAME:devtools $REPO_NAMESPACE
-.devcontainer/docker/bin/publish.sh $REPO_NAME:cloudtools $REPO_NAMESPACE
+$BUILD_CONTEXT/$bin_dir/build.sh $REPO_NAME $REMOTE_USER --build-arg PYTHON_VERSION=devcontainer $BUILD_CONTEXT
+$BUILD_CONTEXT/$bin_dir/build.sh $REPO_NAME:devtools $REMOTE_USER --build-arg HOMEBREW_ENABLED=true --build-arg PYTHON_VERSION=latest $BUILD_CONTEXT
+$BUILD_CONTEXT/$bin_dir/build.sh $REPO_NAME:cloudtools $REMOTE_USER --build-arg PYTHON_VERSION=devcontainer $BUILD_CONTEXT
+$BUILD_CONTEXT/$bin_dir/publish.sh $REPO_NAME $REPO_NAMESPACE
+$BUILD_CONTEXT/$bin_dir/publish.sh $REPO_NAME:devtools $REPO_NAMESPACE
+$BUILD_CONTEXT/$bin_dir/publish.sh $REPO_NAME:cloudtools $REPO_NAMESPACE
 EOF
 
     "$script_dir/exec-com.sh" sh -c "$all_commands"

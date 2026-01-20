@@ -65,6 +65,8 @@ RUN if [ "$IMAGE_NAME" = "ubuntu" ]; then \
     fi; \
   fi
 
+# --------------------------------------------------------------
+
 
 FROM builder AS devuser
 
@@ -87,7 +89,10 @@ ENV DEV=$DEV
 # Package management control
 ARG HOMEBREW_ENABLED=false
 ARG NO_BREW_UPDATE=$DEV
-
+# Default path to Homebrew binary (for convenience; not likely to change)
+ARG BREW=/home/linuxbrew/.linuxbrew/bin/brew
+# Path to pipx binary locator script
+ARG PIPX=/pipxpath.sh
 # Set default Git version to install
 # ('latest' to install latest from source, 'system' to use system Git, or specify version like '2.34.1', '2.35.0', etc.)
 ARG GIT_VERSION=latest
@@ -97,10 +102,6 @@ ARG PYTHON_VERSION=latest
 # Whether to set default root password to 'docker' at build time
 # (for development purposes only; password can be changed at runtime)
 ARG DEFAULT_ROOT_PASS=$DEV
-# Default path to Homebrew binary (for convenience; not likely to change)
-ARG BREW=/home/linuxbrew/.linuxbrew/bin/brew
-# Path to pipx binary locator script
-ARG PIPX=/pipxpath.sh
 
 # Export PYTHON_VERSION for convenience
 ENV PYTHON_VERSION=$PYTHON_VERSION
@@ -110,14 +111,13 @@ ENV PATH="/home/$USERNAME/.local/bin:${PATH}"
 RUN /tmp/lib-scripts/devuser-generators.sh \
   && /tmp/lib-scripts/devuser-utils.sh \
   && /tmp/lib-scripts/git-install.sh \
-  && /tmp/lib-scripts/user-setup.sh \
+  && /tmp/lib-scripts/devuser-setup.sh \
   # Cleanup
   && apt-get clean -y \
   && apt-get -y autoremove \
   && rm -rf /var/lib/apt/lists/* \
   && rm -f /tmp/lib-scripts/devuser-*.sh \
-  && rm -f /tmp/lib-scripts/git-install.sh \
-  && rm -f /tmp/lib-scripts/user-setup.sh
+  && rm -f /tmp/lib-scripts/git-install.sh
 
 # Install Homebrew for the non-root user
 # Note: Homebrew on Linux doesn't require admin privileges when installed in home directory
@@ -127,8 +127,9 @@ WORKDIR /home/$USERNAME
 RUN test "$HOMEBREW_ENABLED" != "true" \
   || NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 
-# Set default command to login shell
+# Set default command
 CMD ["/bin/bash"]
+
 # --------------------------------------------------------------
 
 
@@ -179,6 +180,7 @@ LABEL org.opencontainers.image.title="$REPO_NAME - devcontainer - $IMAGE_NAME - 
 LABEL org.opencontainers.image.source=https://github.com/$REPO_NAMESPACE/$REPO_NAME
 LABEL org.opencontainers.image.description="A simple Debian-based Docker image with essential development tools and Homebrew."
 LABEL org.opencontainers.image.licenses=MIT
+
 # --------------------------------------------------------------
 
 
@@ -229,8 +231,10 @@ RUN if  [ "$HOMEBREW_ENABLED" = "true" ]; then \
 
 ENTRYPOINT ["/docker-entrypoint.sh"]
 
-# Set default command to login shell
+# Set default command
 CMD ["/bin/bash"]
+
+# --------------------------------------------------------------
 
 
 FROM devtools AS cloudtools
@@ -252,6 +256,8 @@ USER $USERNAME
 RUN if $PIPX; then \
     $($PIPX) install cfn; \
   fi
+
+# --------------------------------------------------------------
 
 
 FROM devtools AS codeserver
@@ -298,13 +304,15 @@ WORKDIR $DEFAULT_WORKSPACE
 
 ENTRYPOINT ["/usr/bin/tini", "--"]
 
-# CMD ["/start-code-server.sh"]
+# CMD ["start-code-server"]
 CMD ["/bin/sh", "-c", "start-code-server --config-only && set -x ; \
     exec code-server \
       --bind-addr $BIND_ADDR \
       --extensions-dir \
       $(dirname $CODE_SERVER_EXTENSIONS) \
       ${CODE_SERVER_WORKSPACE:-.}"]
+
+# --------------------------------------------------------------
 
 
 FROM builder AS production
