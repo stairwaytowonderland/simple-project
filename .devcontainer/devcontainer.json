@@ -20,7 +20,7 @@
 	// 		"TIMEZONE": "America/Chicago"
 
 	// 		* Enable Homebrew installation and usage in the container (disabled by default)
-	// 		// "HOMEBREW_ENABLED": "true",
+	// 		// "DEV_PARENT_IMAGE": "brewuser",
 
 	// 		* NOTE: "devcontainer", "system", "latest", or specific version like "3.12"
 	// 		* Use "devcontainer" if using the Python devcontainer feature

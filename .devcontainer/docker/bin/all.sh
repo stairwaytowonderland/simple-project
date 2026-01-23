@@ -45,11 +45,11 @@ main() {
             && all_commands="$all_commands && $cmd" \
             || all_commands="$cmd"
     done << EOF
-$BUILD_CONTEXT/$bin_dir/build.sh $REPO_NAME $REMOTE_USER --build-arg PYTHON_VERSION=devcontainer $BUILD_CONTEXT
-$BUILD_CONTEXT/$bin_dir/build.sh $REPO_NAME:devtools $REMOTE_USER --build-arg HOMEBREW_ENABLED=true --build-arg PYTHON_VERSION=latest --build-arg SHFMT_ENABLED=true $BUILD_CONTEXT
-$BUILD_CONTEXT/$bin_dir/build.sh $REPO_NAME:cloudtools $REMOTE_USER --build-arg PYTHON_VERSION=devcontainer $BUILD_CONTEXT
-$BUILD_CONTEXT/$bin_dir/build.sh $REPO_NAME:codeserver $REMOTE_USER --build-arg PYTHON_VERSION=latest --build-arg DEFAULT_PASS_CHARSET='a-zA-Z0-9' $BUILD_CONTEXT
-$BUILD_CONTEXT/$bin_dir/build.sh $REPO_NAME:codeserver-minimal $REMOTE_USER --build-arg PYTHON_VERSION=system --build-arg DEFAULT_PASS_CHARSET='a-zA-Z0-9' $BUILD_CONTEXT
+$BUILD_CONTEXT/$bin_dir/build.sh $REPO_NAME $REMOTE_USER --build-arg PYTHON_VERSION=devcontainer --build-arg PRE_COMMIT_ENABLED=true "$@" $BUILD_CONTEXT
+$BUILD_CONTEXT/$bin_dir/build.sh $REPO_NAME:devtools $REMOTE_USER --build-arg DEV_PARENT_IMAGE=brewuser --build-arg PYTHON_VERSION=latest --build-arg SHFMT_ENABLED=true "$@" $BUILD_CONTEXT
+$BUILD_CONTEXT/$bin_dir/build.sh $REPO_NAME:cloudtools $REMOTE_USER --build-arg PYTHON_VERSION=devcontainer "$@" $BUILD_CONTEXT
+$BUILD_CONTEXT/$bin_dir/build.sh $REPO_NAME:codeserver $REMOTE_USER --build-arg PYTHON_VERSION=latest --build-arg DEFAULT_PASS_CHARSET='a-zA-Z0-9' "$@" $BUILD_CONTEXT
+$BUILD_CONTEXT/$bin_dir/build.sh $REPO_NAME:codeserver-minimal $REMOTE_USER --build-arg PYTHON_VERSION=system --build-arg DEFAULT_PASS_CHARSET='a-zA-Z0-9' "$@" $BUILD_CONTEXT
 $BUILD_CONTEXT/$bin_dir/publish.sh $REPO_NAME $REPO_NAMESPACE
 $BUILD_CONTEXT/$bin_dir/publish.sh $REPO_NAME:devtools $REPO_NAMESPACE
 $BUILD_CONTEXT/$bin_dir/publish.sh $REPO_NAME:cloudtools $REPO_NAMESPACE
@@ -60,4 +60,10 @@ EOF
     "$script_dir/exec-com.sh" sh -c "$all_commands"
 }
 
-main "$@"
+for arg in "$@"; do
+    if [ "$arg" != "$BUILD_CONTEXT" ]; then
+        com+=("$arg")
+    fi
+done
+
+main "${com[@]}"

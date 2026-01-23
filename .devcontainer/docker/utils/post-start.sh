@@ -12,11 +12,11 @@ printf "\033[0;32mStarter Project Dev Container: %s\033[0m\n\n" "$(basename "$PW
 echo "=== Installed Tools ==="
 echo "Bash: $(bash --version | head -n 1)"
 echo "Git: $(git --version)"
-echo "Homebrew: $(brew --version | head -n 1)"
 echo "Python: $(python3 --version)"
-# echo "Node.js: $(node --version)"
-# echo "npm: $(npm --version)"
-# echo "Pre-commit: $(pre-commit --version)"
+! type brew > /dev/null 2>&1 || echo "Homebrew: $(brew --version | head -n 1)"
+! type node > /dev/null 2>&1 || echo "Node.js: $(node --version)"
+! type npm > /dev/null 2>&1 || echo "npm: $(npm --version)"
+! type pre-commit > /dev/null 2>&1 || echo "Pre-commit: $(pre-commit --version)"
 echo ""
 
 # Display environment information
@@ -27,6 +27,6 @@ echo "User: $(whoami)"
 echo ""
 
 # Display container information if available
-if command -v devcontainer-info &> /dev/null; then
+if type devcontainer-info > /dev/null 2>&1; then
     devcontainer-info
 fi

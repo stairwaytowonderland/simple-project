@@ -2,8 +2,6 @@
 
 set -e
 
-SHFMT_ENABLED="${SHFMT_ENABLED:-false}"
-
 $LOGGER "Installing base utilities and dependencies..."
 
 apt-get update
@@ -16,12 +14,12 @@ openssh-client
 EOF
 )"
 
-# ! CAUTION: `shfmt` (for shell script formatting) requires Go,
-# ! and has many CVEs in the Go toolchain; Install only if requested
-if [ "$SHFMT_ENABLED" = "true" ]; then
+if [ "$PRE_COMMIT_ENABLED" = "true" ] \
+    && ! "$PIPX" > /dev/null 2>&1 \
+    && ! type "$BREW" > /dev/null 2>&1; then
     PACKAGES_TO_INSTALL="$PACKAGES_TO_INSTALL $(
         cat << EOF
-shfmt
+pre-commit
 EOF
     )"
 fi

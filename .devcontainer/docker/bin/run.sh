@@ -116,10 +116,10 @@ while [ $# -gt 0 ]; do
             ;;
     esac
 done
-com+=("-v" "${RUN_CONTEXT}:${workspace_dir}")
-if [ "$DOCKER_TARGET" = "base" ]; then
+if [ "$DOCKER_TARGET" = "builder" ]; then
     com+=("-v" "${RUN_CONTEXT}/.devcontainer/docker/lib-scripts:/tmp/lib-scripts:ro")
 else
+    com+=("-v" "${RUN_CONTEXT}:${workspace_dir}")
     if [ -d "$HOME/.ssh" ]; then
         com+=("-v" "$HOME/.ssh:/home/${REMOTE_USER}/.ssh:ro")
     fi
