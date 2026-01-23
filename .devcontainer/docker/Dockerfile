@@ -221,7 +221,7 @@ ENV RESET_ROOT_PASS=false
 # Copy library scripts
 COPY --chmod=755 .devcontainer/docker/lib-scripts/base-*.sh /tmp/lib-scripts/
 # Copy post-start script
-COPY --chmod=755 .devcontainer/docker/utils/post-start.sh /usr/local/bin/post-start
+COPY --chmod=755 --chown=$USERNAME:$USERNAME .devcontainer/docker/utils/post-start.sh /usr/local/bin/post-start
 
 # Copy shfmt installation from gobuilder stage
 COPY --from=gobuilder /usr/local/bin/shfmt /usr/local/bin/shfmt
@@ -362,9 +362,9 @@ ENV CODE_SERVER_CONFIG=/home/$USERNAME/.config/code-server/config.yaml
 ENV CODE_SERVER_EXTENSIONS=$DEFAULT_WORKSPACE/.code-server/extensions/extensions.json
 
 # Copy library scripts
-COPY --chmod=755 .devcontainer/docker/lib-scripts/codeserver-*.sh /tmp/lib-scripts/
+COPY --chmod=755 .devcontainer/docker/lib-scripts/codeserver-utils.sh /tmp/lib-scripts/
 # Copy start-code-server script
-COPY --chmod=755 .devcontainer/docker/utils/start-code-server.sh /usr/local/bin/start-code-server
+COPY --chmod=755 --chown=$USERNAME:$USERNAME .devcontainer/docker/utils/start-code-server.sh /usr/local/bin/start-code-server
 
 USER root
 
@@ -377,11 +377,19 @@ RUN /tmp/lib-scripts/codeserver-utils.sh \
   && rm -rf /var/lib/apt/lists/* \
   && rm -rf /tmp/lib-scripts
 
-RUN $LOGGER "Installing code-server..." \
-  && curl -fsSL https://code-server.dev/install.sh | sh \
-  && $LOGGER "code-server installation complete."
+# Results in a much larger image
+# RUN $LOGGER "Installing code-server..." \
+#   && curl -fsSL https://code-server.dev/install.sh | sh \
+#   && $LOGGER "code-server installation complete."
 
 USER $USERNAME
+COPY --chmod=755 --chown=$USERNAME:$USERNAME .devcontainer/docker/lib-scripts/install-helper.sh /tmp/lib-scripts/
+COPY --chmod=755 --chown=$USERNAME:$USERNAME .devcontainer/docker/lib-scripts/codeserver-install.sh /tmp/lib-scripts/
+
+RUN $LOGGER "Installing code-server..." \
+  && /tmp/lib-scripts/codeserver-install.sh \
+  && $LOGGER "code-server installation complete." \
+  && rm -rf /tmp/lib-scripts
 
 EXPOSE 8080
 
@@ -412,9 +420,9 @@ ENV CODE_SERVER_CONFIG=/home/$USERNAME/.config/code-server/config.yaml
 ENV CODE_SERVER_EXTENSIONS=$DEFAULT_WORKSPACE/.code-server/extensions/extensions.json
 
 # Copy library scripts
-COPY --chmod=755 .devcontainer/docker/lib-scripts/codeserver-*.sh /tmp/lib-scripts/
+COPY --chmod=755 .devcontainer/docker/lib-scripts/codeserver-utils.sh /tmp/lib-scripts/
 # Copy start-code-server script
-COPY --chmod=755 .devcontainer/docker/utils/start-code-server.sh /usr/local/bin/start-code-server
+COPY --chmod=755 --chown=$USERNAME:$USERNAME .devcontainer/docker/utils/start-code-server.sh /usr/local/bin/start-code-server
 
 USER root
 
@@ -427,11 +435,19 @@ RUN /tmp/lib-scripts/codeserver-utils.sh \
   && rm -rf /var/lib/apt/lists/* \
   && rm -rf /tmp/lib-scripts
 
-RUN $LOGGER "Installing code-server..." \
-  && curl -fsSL https://code-server.dev/install.sh | sh \
-  && $LOGGER "code-server installation complete."
+# Results in a much larger image
+# RUN $LOGGER "Installing code-server..." \
+#   && curl -fsSL https://code-server.dev/install.sh | sh \
+#   && $LOGGER "code-server installation complete."
 
 USER $USERNAME
+COPY --chmod=755 --chown=$USERNAME:$USERNAME .devcontainer/docker/lib-scripts/install-helper.sh /tmp/lib-scripts/
+COPY --chmod=755 --chown=$USERNAME:$USERNAME .devcontainer/docker/lib-scripts/codeserver-install.sh /tmp/lib-scripts/
+
+RUN $LOGGER "Installing code-server..." \
+  && /tmp/lib-scripts/codeserver-install.sh \
+  && $LOGGER "code-server installation complete." \
+  && rm -rf /tmp/lib-scripts
 
 EXPOSE 8080
 
