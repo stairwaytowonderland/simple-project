@@ -9,7 +9,7 @@
 	// "image": "ghcr.io/stairwaytowonderland/starter-project:cloudtools-bookworm-slim",
 	// "build": {
 	// 	"dockerfile": "./docker/Dockerfile",
-	// 	"target": "cloudtools",
+	// 	"target": "<docker-build-target>", // e.g., "base", "devtools", "cloudtools"
 	// 	"context": "..",
 	// 	"args": {
 	// 		// "IMAGE_NAME": "debian",
