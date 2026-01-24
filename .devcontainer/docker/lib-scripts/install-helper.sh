@@ -91,7 +91,7 @@ __get_version() {
     if [ ! "$(__check_semver "$_version")" ]; then
         # https://github.com/devcontainers/features/blob/main/src/git/install.sh#L291C76-L291C117
         version_list="$(curl -sSL -H "Accept: application/vnd.github.v3+json" "https://api.github.com/repos/${_github_repo}/tags" | grep -oP '"name":\s*"v\K[0-9]+\.[0-9]+\.[0-9]+"' | tr -d '"' | sort -rV)"
-        if [ "${_version}" = "latest" ] || [ "${_version}" = "current" ]; then
+        if [ "${_version}" = "latest" ] || [ "${_version}" = "lts" ] || [ "${_version}" = "current" ]; then
             VERSION="$(echo "${version_list}" | head -n 1)"
         else
             escaped_version="$(echo "${_version}" | sed 's/\./\\./g')"

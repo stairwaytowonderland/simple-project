@@ -50,7 +50,7 @@ RUN sed -i "s|\$LOGGER|$LOGGER|g" /tmp/lib-scripts/builder-generators.sh \
   && apt-get clean -y \
   && apt-get -y autoremove \
   && rm -rf /var/lib/apt/lists/* \
-  && rm -rf /tmp/lib-scripts \
+  && rm -rf /tmp/* \
   # Set timezone
   && [ "$TIMEZONE" = "UTC" ] || \
   ln -sf /usr/share/zoneinfo/$TIMEZONE /etc/localtime \
@@ -119,8 +119,36 @@ USER root
 RUN /tmp/lib-scripts/go-install.sh \
   # Cleanup
   && apt-get clean -y \
-  && rm -rf /var/lib/apt/lists/* \
-  && rm -rf /tmp/lib-scripts
+  && rm -rf /var/lib/apt/lists/*
+
+CMD ["/bin/bash"]
+
+# --------------------------------------------------------------
+
+
+FROM builder AS nodebuilder
+
+ARG USERNAME=vscode
+ARG USER_UID=1000
+ARG USER_GID=$USER_UID
+
+ARG NODE_VERSION=lts
+ARG NODEPATH=/usr/local/lib/node/nodejs
+ENV NODEJS_HOME=/usr/local/lib/nodejs
+
+ENV PATH="$NODEJS_HOME/bin:$PATH"
+
+# Copy library scripts
+COPY --chmod=755 .devcontainer/docker/lib-scripts/install-helper.sh /tmp/lib-scripts/
+COPY --chmod=755 .devcontainer/docker/lib-scripts/node-install.sh /tmp/lib-scripts/
+
+USER root
+
+RUN /tmp/lib-scripts/node-install.sh \
+  # Cleanup
+  && apt-get clean -y \
+  && rm -rf /var/lib/apt/lists/*
+
 CMD ["/bin/bash"]
 
 # --------------------------------------------------------------
@@ -172,7 +200,7 @@ RUN /tmp/lib-scripts/devbuilder-generators.sh \
   && apt-get clean -y \
   && apt-get -y autoremove \
   && rm -rf /var/lib/apt/lists/* \
-  && rm -rf /tmp/lib-scripts
+  && rm -rf /tmp/*
 
 # Install Homebrew for the non-root user
 # Note: Homebrew on Linux doesn't require admin privileges when installed in home directory
@@ -233,7 +261,7 @@ RUN sed -i "s|\$LOGGER|$LOGGER|g" /usr/local/bin/post-start \
   # Cleanup
   && apt-get clean -y \
   && rm -rf /var/lib/apt/lists/* \
-  && rm -rf /tmp/lib-scripts
+  && rm -rf /tmp/*
 
 # Switch to non-root user
 USER $USERNAME
@@ -273,24 +301,29 @@ ENV RESET_ROOT_PASS=$DEFAULT_ROOT_PASS
 COPY --chmod=755 .devcontainer/docker/lib-scripts/devtools-*.sh /tmp/lib-scripts/
 COPY --chmod=755 .devcontainer/docker/lib-scripts/python-install.sh /tmp/lib-scripts/
 
+ARG NODEPATH=/home/$USERNAME/.local/lib/node/nodejs
+ENV NODEJS_HOME=/home/$USERNAME/.local/lib/nodejs
+ENV PATH="$NODEJS_HOME/bin:$PATH"
+COPY --from=nodebuilder --chown=$USERNAME:$USERNAME /usr/local/lib/node/nodejs $NODEPATH
+COPY --from=nodebuilder --chmod=755 /tmp/node-* /tmp/
+
 USER root
 
 RUN /tmp/lib-scripts/devtools-utils.sh \
   && /tmp/lib-scripts/python-install.sh \
+  # # Insert NODEPATH variable on 2nd line
+  && if [ -x /tmp/node-install ]; then \
+    sed -i "2s|^|\nNODEPATH=$NODEPATH\n\n|" /tmp/node-install \
+    && /tmp/node-install; \
+  fi \
   # Cleanup
   && apt-get -y autoremove \
   && apt-get clean -y \
   && rm -rf /var/lib/apt/lists/* \
-  && rm -rf /tmp/lib-scripts
+  && rm -rf /tmp/*
 
 # Switch to non-root user
 USER $USERNAME
-# COPY --chmod=755 --chown=$USERNAME:$USERNAME .devcontainer/docker/lib-scripts/install-helper.sh /tmp/lib-scripts/
-# COPY --chmod=755 --chown=$USERNAME:$USERNAME .devcontainer/docker/lib-scripts/node-install.sh /tmp/lib-scripts/
-
-# # If Node.js was manually installed, set NODEJS_HOME and update PATH
-# ENV NODEJS_HOME=/home/$USERNAME/.local/lib/nodejs
-# ENV PATH="$NODEJS_HOME/bin:$PATH"
 
 # Install Python, pipx, Poetry, uv, and other dev tools.
 # Do nothing if PYTHON_VERSION is 'devcontainer' or matches the USERNAME.
@@ -315,23 +348,12 @@ RUN if type "$BREW" > /dev/null 2>&1; then \
     fi; \
   fi \
   && if "$PIPX" 2>/dev/null; then \
-    type pre-commit >/dev/null 2>&1 || $("$PIPX") install pre-commit \
+    type pre-commit >/dev/null 2>&1 \
+      || [ "$PRE_COMMIT_ENABLED" != "true" ] \
+      || $("$PIPX") install pre-commit \
     && $("$PIPX") install poetry \
     && $("$PIPX") install uv; \
   fi
-  # Manually install Node.js and npm
-  # && /tmp/lib-scripts/node-install.sh \
-  # Cleanup
-  # && rm -rf /tmp/lib-scripts
-
-# USER root
-# # If Node.js was manually installed, set up alternatives
-# RUN if [ -r /tmp/alternatives ]; then \
-#     chmod +x /tmp/alternatives \
-#     && sh /tmp/alternatives \
-#     && rm -f /tmp/alternatives; \
-#   fi
-# USER $USERNAME
 
 ENTRYPOINT ["/docker-entrypoint.sh"]
 
@@ -355,7 +377,7 @@ RUN /tmp/lib-scripts/cloud-cli-tools.sh \
   # Cleanup
   && apt-get clean -y \
   && rm -rf /var/lib/apt/lists/* \
-  && rm -rf /tmp/lib-scripts
+  && rm -rf /tmp/*
 
 USER $USERNAME
 
@@ -391,7 +413,7 @@ RUN /tmp/lib-scripts/codeserver-utils.sh \
   # Cleanup
   && apt-get clean -y \
   && rm -rf /var/lib/apt/lists/* \
-  && rm -rf /tmp/lib-scripts
+  && rm -rf /tmp/*
 
 # Results in a much larger image
 # RUN $LOGGER "Installing code-server..." \
@@ -405,7 +427,7 @@ COPY --chmod=755 --chown=$USERNAME:$USERNAME .devcontainer/docker/lib-scripts/co
 RUN $LOGGER "Installing code-server..." \
   && /tmp/lib-scripts/codeserver-install.sh \
   && $LOGGER "code-server installation complete." \
-  && rm -rf /tmp/lib-scripts
+  && rm -rf /tmp/*
 
 EXPOSE 8080
 
@@ -449,7 +471,7 @@ RUN /tmp/lib-scripts/codeserver-utils.sh \
   # Cleanup
   && apt-get clean -y \
   && rm -rf /var/lib/apt/lists/* \
-  && rm -rf /tmp/lib-scripts
+  && rm -rf /tmp/*
 
 # Results in a much larger image
 # RUN $LOGGER "Installing code-server..." \
@@ -463,7 +485,7 @@ COPY --chmod=755 --chown=$USERNAME:$USERNAME .devcontainer/docker/lib-scripts/co
 RUN $LOGGER "Installing code-server..." \
   && /tmp/lib-scripts/codeserver-install.sh \
   && $LOGGER "code-server installation complete." \
-  && rm -rf /tmp/lib-scripts
+  && rm -rf /tmp/*
 
 EXPOSE 8080
 

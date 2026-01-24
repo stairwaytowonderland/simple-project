@@ -10,11 +10,12 @@ TOOL_LABEL="Node.js"
 GITHUB_REPO="nodejs/node"
 DOWNLOAD_PREFIX="https://nodejs.org/dist/v"
 
-NODEJS_HOME="${NODEJS_HOME:-/usr/local/lib/node/nodejs}"
+NODEPATH="${NODEPATH:-/usr/local/lib/node/nodejs}"
+NODEJS_HOME="${NODEJS_HOME:-/usr/local/lib/nodejs}"
 
 LEVEL='*' $LOGGER "Installing $TOOL_LABEL..."
 
-if [ "$VERSION" = "latest" ]; then
+if [ "$VERSION" = "latest" ] || [ "$VERSION" = "lts" ] || [ "$VERSION" = "current" ]; then
     VERSION="$(curl -sSLf https://api.github.com/repos/$GITHUB_REPO/releases/latest \
         | jq -r .tag_name | sed 's/^v//')"
 fi
@@ -41,32 +42,40 @@ else
     exit 1
 fi
 
-INSTALL_PREFIX="$HOME/.local/lib"
-rm -rf "$INSTALL_PREFIX/node-$DOWNLOAD_VERSION"
+mkdir -p "$NODEPATH"
+rm -rf "$NODEPATH/node-$DOWNLOAD_VERSION"
 
 LEVEL='*' $LOGGER "Downloading $TOOL_LABEL $DOWNLOAD_VERSION..."
 if (
-    __download_tar "$DOWNLOAD_URL" "$INSTALL_PREFIX"
+    __download_tar "$DOWNLOAD_URL" "$NODEPATH"
 ); then
     (
         set -x
-        mv "$INSTALL_PREFIX/node-$DOWNLOAD_VERSION-$DOWNLOAD_OS-$DOWNLOAD_ARCH" "$INSTALL_PREFIX/node-$DOWNLOAD_VERSION"
+        mv "$NODEPATH/node-$DOWNLOAD_VERSION-$DOWNLOAD_OS-$DOWNLOAD_ARCH" "$NODEPATH/node-$DOWNLOAD_VERSION"
     )
-    ln -s "$INSTALL_PREFIX/node-$DOWNLOAD_VERSION" "$NODEJS_HOME"
+    # ln -s "$NODEPATH/node-$DOWNLOAD_VERSION" "$NODEJS_HOME"
     # ln -s "$NODEJS_HOME/bin/node" "$HOME/.local/bin/node"
-    cat > /tmp/alternatives << EOF
+    cat > /tmp/node-install << EOF
 #!/bin/sh
-set -e
+set -ex
+
+NODEPATH="\${NODEPATH:-$NODEPATH}"
+NODEJS_HOME="\${NODEJS_HOME:-$NODEJS_HOME}"
+
+mkdir -p "\$(dirname "\$NODEJS_HOME")"
+ln -s "\$NODEPATH/node-$DOWNLOAD_VERSION" "\$NODEJS_HOME"
+chown -R $USERNAME:$USERNAME "\$NODEJS_HOME"
+
 LEVEL='*' $LOGGER "Setting up alternatives for Node.js $DOWNLOAD_VERSION..."
-node="$INSTALL_PREFIX/node-$DOWNLOAD_VERSION/bin/node"
+node="\$NODEPATH/node-$DOWNLOAD_VERSION/bin/node"
 [ ! -L "\$node" ] || node="\$(readlink -f \$node)"
-update-alternatives --install "$NODEJS_HOME/bin/node" node "\$node" 1
-npm="$INSTALL_PREFIX/node-$DOWNLOAD_VERSION/bin/npm"
+update-alternatives --install "\$NODEJS_HOME/bin/node" node "\$node" 1
+npm="\$NODEPATH/node-$DOWNLOAD_VERSION/bin/npm"
 [ ! -L "\$npm" ] || npm="\$(readlink -f \$npm)"
-update-alternatives --install "$NODEJS_HOME/bin/npm" npm "\$npm" 1
-npx="$INSTALL_PREFIX/node-$DOWNLOAD_VERSION/bin/npx"
+update-alternatives --install "\$NODEJS_HOME/bin/npm" npm "\$npm" 1
+npx="\$NODEPATH/node-$DOWNLOAD_VERSION/bin/npx"
 [ ! -L "\$npx" ] || npx="\$(readlink -f \$npx)"
-update-alternatives --install "$NODEJS_HOME/bin/npx" npx "\$npx" 1
+update-alternatives --install "\$NODEJS_HOME/bin/npx" npx "\$npx" 1
 EOF
 
 else

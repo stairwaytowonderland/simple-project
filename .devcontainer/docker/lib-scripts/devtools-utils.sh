@@ -38,15 +38,29 @@ EOF
     )"
 fi
 
-# Install Node.js (LTS version) and npm
-curl -fsSL https://deb.nodesource.com/setup_lts.x | bash - \
-    && PACKAGES_TO_INSTALL="$(
+if [ -n "${NODEPATH-}" ] && [ -d "${NODEPATH-}" ]; then
+    # ! NOTE: libatomic1 required if manually installing node and npm
+    # ! (e.g. binary downloaded or copied from nodebuilder stage)
+    PACKAGES_TO_INSTALL="$PACKAGES_TO_INSTALL $(
         cat << EOF
+libatomic1
+EOF
+    )"
+
+    install_packages "${PACKAGES_TO_INSTALL# }"
+else
+    install_packages "${PACKAGES_TO_INSTALL# }"
+
+    # Install Node.js (LTS version) and npm
+    curl -fsSL https://deb.nodesource.com/setup_lts.x | bash - \
+        && PACKAGES_TO_INSTALL="$(
+            cat << EOF
 nodejs
 EOF
-    )" \
-    && $LOGGER "Node.js and npm packages: $PACKAGES_TO_INSTALL"
+        )" \
+        && $LOGGER "Node.js and npm packages: $PACKAGES_TO_INSTALL"
 
-install_packages "${PACKAGES_TO_INSTALL# }"
+    install_packages "${PACKAGES_TO_INSTALL# }"
+fi
 
 $LOGGER "Done! Devtools utilities installation complete."
