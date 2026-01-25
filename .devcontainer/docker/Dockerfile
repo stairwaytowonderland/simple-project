@@ -429,9 +429,13 @@ RUN $LOGGER "Installing code-server..." \
   && $LOGGER "code-server installation complete." \
   && rm -rf /tmp/*
 
+WORKDIR $DEFAULT_WORKSPACE
+
 EXPOSE 8080
 
-WORKDIR $DEFAULT_WORKSPACE
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+  CMD curl -sSLf http://${BIND_ADDR}/healthz || exit 1
 
 ENTRYPOINT ["/usr/bin/tini", "--"]
 
@@ -487,9 +491,13 @@ RUN $LOGGER "Installing code-server..." \
   && $LOGGER "code-server installation complete." \
   && rm -rf /tmp/*
 
+WORKDIR $DEFAULT_WORKSPACE
+
 EXPOSE 8080
 
-WORKDIR $DEFAULT_WORKSPACE
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+  CMD curl -sSLf http://${BIND_ADDR}/healthz || exit 1
 
 ENTRYPOINT ["/usr/bin/tini", "--"]
 
