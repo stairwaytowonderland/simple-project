@@ -47,7 +47,7 @@ rm -rf "$NODEPATH/node-$DOWNLOAD_VERSION"
 
 LEVEL='*' $LOGGER "Downloading $TOOL_LABEL $DOWNLOAD_VERSION..."
 if (
-    __download_tar "$DOWNLOAD_URL" "$NODEPATH"
+    __install_tar "$DOWNLOAD_URL" "$NODEPATH"
 ); then
     (
         set -x

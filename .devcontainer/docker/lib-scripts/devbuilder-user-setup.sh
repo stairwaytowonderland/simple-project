@@ -90,7 +90,7 @@ $LOGGER "Done! User '$USERNAME' created successfully."
 # Avoid using 'chpasswd' with here-string (e.g. chpasswd <<<"root:docker") as it may not be supported in some shells
 if [ "$DEFAULT_ROOT_PASS" = "true" ]; then
     # Extract ID from /etc/os-release to use as default root password (e.g., 'ubuntu', 'debian', etc.)
-    prop=ID ID="$({ while IFS= read -r line; do printf '%s\n' "$line"; done < /etc/os-release; } | grep "^$prop=" | awk -F'=' '{print $2}')"
+    prop=ID ID="$({ while IFS= read -r line; do printf '%s\n' "$line"; done < /etc/os-release; } | grep "^$prop=" | cut -d'=' -f2 | tr -d '"')"
     $LOGGER "Setting default root password to '$ID' (for development purposes only)"
     echo "root:${ID:-docker}" | chpasswd
 fi

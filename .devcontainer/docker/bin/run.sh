@@ -18,6 +18,10 @@ script_name="$0"
 script_dir="$(cd "$(dirname "$script_name")" && pwd)"
 # ---------------------------------------
 
+HOST_IP="${HOST_IP:-0.0.0.0}"
+HOST_PORT="${HOST_PORT:-13337}"
+CONTAINER_PORT="${CONTAINER_PORT:-13337}"
+
 # Specify last argument as context if it's a directory
 last_arg="${*: -1}"
 
@@ -33,9 +37,9 @@ fi
 # Determine IMAGE_NAME and DOCKER_TARGET
 IMAGE_NAME=${IMAGE_NAME:-$1}
 shift
-if awk -F':' '{print $2}' <<< "$IMAGE_NAME" > /dev/null 2>&1; then
-    DOCKER_TARGET="$(awk -F':' '{print $2}' <<< "$IMAGE_NAME")"
-    IMAGE_NAME="$(awk -F':' '{print $1}' <<< "$IMAGE_NAME")"
+if [ -n "${IMAGE_NAME##*:}" ] && [ "${IMAGE_NAME##*:}" != "$IMAGE_NAME" ]; then
+    DOCKER_TARGET="${IMAGE_NAME##*:}"
+    IMAGE_NAME="${IMAGE_NAME%%:*}"
 fi
 DOCKER_TARGET=${DOCKER_TARGET:-"base"}
 if [ -d "$last_arg" ]; then
@@ -127,7 +131,7 @@ else
         com+=("-v" "$HOME/.gitconfig:/etc/gitconfig:ro")
     fi
     if echo "$DOCKER_TARGET" | grep -qE "^codeserver"; then
-        com+=("-p" "${HOST_IP:-0.0.0.0}:${HOST_PORT:-8080}:${CONTAINER_PORT:-8080}")
+        com+=("-p" "${HOST_IP}:${HOST_PORT}:${CONTAINER_PORT}")
     fi
 fi
 com+=("$docker_tag")

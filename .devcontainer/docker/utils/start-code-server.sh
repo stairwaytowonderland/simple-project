@@ -3,7 +3,9 @@
 # If ever installing codeserver with Homebrew,
 # CODESERVER should be set to /home/linuxbrew/.linuxbrew/opt/code-server/bin/code-server
 CODESERVER="$(which code-server)"
-BIND_ADDR="${BIND_ADDR:-0.0.0.0:8080}"
+BIND_ADDR="${BIND_ADDR:-0.0.0.0:13337}"
+# CODESERVER_IP="${BIND_ADDR%%:*}"
+# CODESERVER_PORT="${BIND_ADDR##*:}"
 
 # Enable debug mode (immediately open prompt) if DEBUG=true
 [ "$DEBUG" != "true" ] || exec /bin/bash

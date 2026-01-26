@@ -390,7 +390,7 @@ RUN if $PIPX 2>/dev/null; then \
 
 FROM base AS codeserver-minimal
 
-ARG BIND_ADDR=0.0.0.0:8080
+ARG BIND_ADDR=0.0.0.0:13337
 ENV BIND_ADDR=$BIND_ADDR
 ENV DEBUG=false
 
@@ -420,22 +420,26 @@ RUN /tmp/lib-scripts/codeserver-utils.sh \
 #   && curl -fsSL https://code-server.dev/install.sh | sh \
 #   && $LOGGER "code-server installation complete."
 
+# If standalone download is false, use root to install the .deb package
+# If standalone download is true use $USERNAME to install the tar.gz package
+
 USER $USERNAME
 COPY --chmod=755 --chown=$USERNAME:$USERNAME .devcontainer/docker/lib-scripts/install-helper.sh /tmp/lib-scripts/
 COPY --chmod=755 --chown=$USERNAME:$USERNAME .devcontainer/docker/lib-scripts/codeserver-install.sh /tmp/lib-scripts/
-
+ARG DOWNLOAD_STANDALONE=true
 RUN $LOGGER "Installing code-server..." \
   && /tmp/lib-scripts/codeserver-install.sh \
   && $LOGGER "code-server installation complete." \
   && rm -rf /tmp/*
 
+# USER $USERNAME
 WORKDIR $DEFAULT_WORKSPACE
 
-EXPOSE 8080
+EXPOSE 13337
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-  CMD curl -sSLf http://${BIND_ADDR}/healthz || exit 1
+  CMD curl -fsSL http://${BIND_ADDR}/healthz || exit 1
 
 ENTRYPOINT ["/usr/bin/tini", "--"]
 
@@ -452,7 +456,7 @@ CMD ["/bin/sh", "-c", "start-code-server --config-only && set -x ; \
 
 FROM devtools AS codeserver
 
-ARG BIND_ADDR=0.0.0.0:8080
+ARG BIND_ADDR=0.0.0.0:13337
 ENV BIND_ADDR=$BIND_ADDR
 ENV DEBUG=false
 
@@ -482,22 +486,28 @@ RUN /tmp/lib-scripts/codeserver-utils.sh \
 #   && curl -fsSL https://code-server.dev/install.sh | sh \
 #   && $LOGGER "code-server installation complete."
 
+# If standalone download is false, use root to install the .deb package
+# If standalone download is true use $USERNAME to install the tar.gz package
+
 USER $USERNAME
 COPY --chmod=755 --chown=$USERNAME:$USERNAME .devcontainer/docker/lib-scripts/install-helper.sh /tmp/lib-scripts/
 COPY --chmod=755 --chown=$USERNAME:$USERNAME .devcontainer/docker/lib-scripts/codeserver-install.sh /tmp/lib-scripts/
-
+ARG DOWNLOAD_STANDALONE=true
 RUN $LOGGER "Installing code-server..." \
   && /tmp/lib-scripts/codeserver-install.sh \
   && $LOGGER "code-server installation complete." \
   && rm -rf /tmp/*
 
+# USER $USERNAME
 WORKDIR $DEFAULT_WORKSPACE
 
-EXPOSE 8080
+WORKDIR $DEFAULT_WORKSPACE
+
+EXPOSE 13337
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-  CMD curl -sSLf http://${BIND_ADDR}/healthz || exit 1
+  CMD curl -fsSL http://${BIND_ADDR}/healthz || exit 1
 
 ENTRYPOINT ["/usr/bin/tini", "--"]
 

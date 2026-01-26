@@ -29,7 +29,7 @@ if [ -z "$go_arch" ]; then
     exit 1
 fi
 
-go_version="$(curl --silent https://go.dev/VERSION?m=text | xargs echo | awk '{print $1}')"
+go_version="$(curl --silent https://go.dev/VERSION?m=text | xargs echo | cut -d' ' -f1)"
 go_url="https://dl.google.com/go/${go_version}.${go_os}-${go_arch}.tar.gz"
 
 rm -rf /usr/local/go

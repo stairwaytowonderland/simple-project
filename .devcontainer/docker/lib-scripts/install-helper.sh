@@ -132,7 +132,7 @@ __set_url_parts() {
     DOWNLOAD_ARCH="$(__get_arch "$DOWNLOAD_PLATFORM")" || return $?
 }
 
-__download_tar() {
+__install_tar() {
     DOWNLOAD_URL="${1-}"
     INSTALL_PREFIX="${2-"/usr/local"}"
 
@@ -140,7 +140,19 @@ __download_tar() {
     LEVEL='*' $LOGGER "Downloading from $DOWNLOAD_URL ..."
     (
         set -x
-        curl -sSLf "$DOWNLOAD_URL" | tar -C "$INSTALL_PREFIX" -xzf -
+        curl -fsSL "$DOWNLOAD_URL" | tar -C "$INSTALL_PREFIX" -xzf -
+    )
+}
+
+__install_deb() {
+    DOWNLOAD_URL="${1-}"
+
+    LEVEL='*' $LOGGER "Downloading from $DOWNLOAD_URL ..."
+    (
+        set -x
+        curl -fsOSL "$DOWNLOAD_URL" \
+            && dpkg -i "${DOWNLOAD_URL##*/}" \
+            && rm -f "${DOWNLOAD_URL##*/}"
     )
 }
 
@@ -162,5 +174,5 @@ export DOWNLOAD_VERSION DOWNLOAD_PLATFORM DOWNLOAD_OS DOWNLOAD_ARCH DOWNLOAD_URL
 #         $LOGGER "Failed to determine download parameters for owner/repo version $VERSION"
 #         exit 1
 #     fi
-#     __download_tar "$DOWNLOAD_URL"
+#     __install_tar "$DOWNLOAD_URL"
 # }

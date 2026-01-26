@@ -113,27 +113,60 @@ requirements_pass() {
     ) | fold -w1 | shuf | tr -d '\n'
 }
 
-if [ "\$#" -eq 0 ] ; then
-    simple_pass
-else
-    case "\$1" in
-        simple)
-            shift
-            simple_pass "\$@"
-            break
-            ;;
-        requirements)
-            shift
-            requirements_pass "\$@"
-            break
-            ;;
-        *)
-            echo "Invalid mode: \$1" >&2
-            echo "Usage: $PASSGEN [simple|requirements] [length] [charset|min_char_per_fam]" >&2
-            exit 1
-            ;;
-    esac
-fi
+parse_args() {
+    qty=0
+    if [ "\$#" -eq 0 ] ; then
+        simple_pass
+    else
+        case "\$1" in
+            [0-9] | [0-9][0-9])
+                qty="\$1"
+                shift
+                ;;
+            -s|--simple)
+                shift
+                simple_pass "\$@"
+                return 0
+                ;;
+            -r|--requirements)
+                shift
+                requirements_pass "\$@"
+                return 0
+                ;;
+            *)
+                echo "Invalid mode: \$1" >&2
+                cat <<EOT >&2
+Usage: $PASSGEN [quantity] [mode] [length] [charset|min_char_per_fam]
+Arguments:
+  quantity: Number of passwords to generate (default: 1; max: 99)
+  mode: '-s|--simple' for simple password generation (default)
+        '-r|--requirements' for password generation with character family requirements
+  length: Length of password to generate (default: $DEFAULT_PASS_LENGTH)
+  charset: Characters to use for password generation (simple mode only; default: $DEFAULT_PASS_CHARSET)
+          Use '[:graph:]' for all printable characters (except space)
+          Use '[:alnum:]' for alphanumeric characters plus digits
+          Use a custom set of characters (e.g. '0-9a-zA-Z!@#$%^&*()')
+  min_char_per_fam: Minimum characters per family (requirements mode only; default: 2)
+EOT
+                exit 1
+                ;;
+        esac
+    fi
+
+    if [ "\$qty" -gt 0 ] ; then
+        count=0
+        while [ \$count -lt "\$qty" ]; do
+            parse_args "\$@" | xargs echo
+            count=\$(( count + 1 ))
+        done
+    fi
+}
+
+passgen() {
+    parse_args "\$@"
+}
+
+passgen "\$@"
 EOF
 
 touch "$FIXPATH" \

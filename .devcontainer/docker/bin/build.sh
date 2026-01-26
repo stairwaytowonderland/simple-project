@@ -75,9 +75,9 @@ if [ -z "$IMAGE_NAME" ]; then
     echo "Usage: $0 <image-name[:build_target]> [build-args...] [options] [context]"
     exit 1
 fi
-if awk -F':' '{print $2}' <<< "$IMAGE_NAME" > /dev/null 2>&1; then
-    DOCKER_TARGET="$(awk -F':' '{print $2}' <<< "$IMAGE_NAME")"
-    IMAGE_NAME="$(awk -F':' '{print $1}' <<< "$IMAGE_NAME")"
+if [ -n "${IMAGE_NAME##*:}" ] && [ "${IMAGE_NAME##*:}" != "$IMAGE_NAME" ]; then
+    DOCKER_TARGET="${IMAGE_NAME##*:}"
+    IMAGE_NAME="${IMAGE_NAME%%:*}"
 fi
 DOCKER_TARGET=${DOCKER_TARGET:-"base"}
 # Determine REMOTE_USER (the devcontainer non-root user, e.g., 'vscode' or 'devcontainer')
