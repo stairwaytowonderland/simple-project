@@ -126,12 +126,12 @@ parse_args() {
             -s|--simple)
                 shift
                 simple_pass "\$@"
-                return 0
+                return \$?
                 ;;
             -r|--requirements)
                 shift
                 requirements_pass "\$@"
-                return 0
+                return \$?
                 ;;
             *)
                 echo "Invalid mode: \$1" >&2
@@ -156,7 +156,7 @@ EOT
     if [ "\$qty" -gt 0 ] ; then
         count=0
         while [ \$count -lt "\$qty" ]; do
-            parse_args "\$@" | xargs -0 echo
+            printf "%s\n" "\$(parse_args \$@)"
             count=\$(( count + 1 ))
         done
     fi
@@ -216,9 +216,9 @@ PATH=\${PATH#:}             # Remove the leading colon
 printf "%s" "\$PATH"
 EOF
 
-touch "/docker-entrypoint.sh" \
-    && chmod +x /docker-entrypoint.sh \
-    && cat > "/docker-entrypoint.sh" << EOF
+touch "/usr/local/bin/docker-entrypoint.sh" \
+    && chmod +x /usr/local/bin/docker-entrypoint.sh \
+    && cat > "/usr/local/bin/docker-entrypoint.sh" << EOF
 #!/bin/sh
 
 set -e

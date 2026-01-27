@@ -13,9 +13,10 @@ ARG VARIANT
 
 ARG DEV_PARENT_IMAGE
 
-ARG PASSGEN=/passgen.sh
-ARG LOGGER=/logger.sh
-ARG FIXPATH=/fixpath.sh
+ARG PASSGEN=/usr/local/bin/passgen.sh
+ENV PASSGEN=$PASSGEN
+ARG LOGGER=/usr/local/bin/logger.sh
+ARG FIXPATH=/usr/local/bin/fixpath.sh
 ARG TIMEZONE=UTC
 
 # Timezone and locale settings
@@ -171,7 +172,7 @@ ENV DEV=$DEV
 # Default path to Homebrew binary (for convenience; not likely to change)
 ARG BREW=/home/linuxbrew/.linuxbrew/bin/brew
 # Path to pipx binary locator script
-ARG PIPX=/pipxpath.sh
+ARG PIPX=/usr/local/bin/pipxpath.sh
 
 # Set default Git version to install
 # ('latest' to install latest from source, 'system' to use system Git, or specify version like '2.34.1', '2.35.0', etc.)
@@ -249,7 +250,7 @@ ENV RESET_ROOT_PASS=false
 # Copy library scripts
 COPY --chmod=755 .devcontainer/docker/lib-scripts/base-*.sh /tmp/lib-scripts/
 # Copy post-start script
-COPY --chmod=755 --chown=$USERNAME:$USERNAME .devcontainer/docker/utils/post-start.sh /usr/local/bin/post-start
+COPY --chmod=755 .devcontainer/docker/utils/post-start.sh /usr/local/bin/post-start
 
 # Copy shfmt installation from gobuilder stage
 COPY --from=gobuilder /usr/local/bin/shfmt /usr/local/bin/shfmt
@@ -261,7 +262,55 @@ RUN sed -i "s|\$LOGGER|$LOGGER|g" /usr/local/bin/post-start \
   # Cleanup
   && apt-get clean -y \
   && rm -rf /var/lib/apt/lists/* \
-  && rm -rf /tmp/*
+  && rm -rf /tmp/* \
+  # Create healthcheck lock file
+  && touch /.healthcheck \
+  && chmod 666 /.healthcheck
+
+COPY --chmod=755 <<EOF /usr/local/bin/healthcheck.sh
+#!/bin/sh
+
+set -e
+
+healthcheck="/.healthcheck"
+
+cleanup() {
+  code=\${1:-\$?}
+  [ "\$code" -eq 0 ] \\
+    && $LOGGER "** Exiting cleanly. Bye!" \\
+    || $LOGGER "** Exiting with code \${code}. Bye!"
+}
+
+handle_int() {
+  code=\$?
+  $LOGGER "** Detected interrupt (\${code}). Cleanup..."
+  trap - EXIT
+  cleanup \$code
+  exit
+}
+
+trap handle_int INT
+trap cleanup EXIT
+
+out="/dev/null"
+case "\$1" in
+  -i|--interactive)
+    out="/dev/stdout"
+    ;;
+  *)
+    ;;
+esac
+
+echo q \\
+  | watch -n 5 -e '[ "\$(cat '"\$healthcheck"')x" != "x" ] && cat '"\$healthcheck"' || false' >"\$out" 2>&1 \\
+  || handle_int
+
+## Use `while read` loop instead of `watch` to allow for interrupt handling with CTRL+D (EOF)
+# while read -r line; do
+#   cat \$healthcheck > /dev/null 2>&1
+# done
+
+EOF
 
 # Switch to non-root user
 USER $USERNAME
@@ -278,7 +327,14 @@ RUN if ! type pre-commit >/dev/null 2>&1 && [ "$PRE_COMMIT_ENABLED" = "true" ]; 
         "$BREW" install pre-commit; \
       fi; \
     fi; \
-  fi
+  fi \
+  && $PASSGEN -s 16 '[:alpha:]' > /.healthcheck
+
+# docker inspect --format='{{json .State.Health}}' <container_id> | jq
+HEALTHCHECK --interval=5s --timeout=3s --start-period=1s --retries=3 \
+  CMD $PASSGEN -s 16 '[:alpha:]' | tee /.healthcheck || exit 1
+
+CMD ["healthcheck.sh"]
 
 LABEL org.opencontainers.image.ref.name="<repo-name>:devcontainer-$BASE_IMAGE"
 LABEL org.opencontainers.image.title="<repo-name> - devcontainer - $IMAGE_NAME - $VARIANT"
@@ -355,7 +411,7 @@ RUN if type "$BREW" > /dev/null 2>&1; then \
     && $("$PIPX") install uv; \
   fi
 
-ENTRYPOINT ["/docker-entrypoint.sh"]
+ENTRYPOINT ["docker-entrypoint.sh"]
 
 CMD ["/bin/bash"]
 
@@ -392,8 +448,6 @@ FROM base AS codeserver-minimal
 
 # Copy library scripts
 COPY --chmod=755 .devcontainer/docker/lib-scripts/codeserver-utils.sh /tmp/lib-scripts/
-# Copy start-code-server script
-COPY --chmod=755 --chown=$USERNAME:$USERNAME .devcontainer/docker/utils/start-code-server.sh /usr/local/bin/start-code-server
 
 USER root
 
@@ -419,6 +473,9 @@ ENV DEBUG=false
 ENV CODE_SERVER_WORKSPACE=$DEFAULT_WORKSPACE
 ENV CODE_SERVER_CONFIG=/home/$USERNAME/.config/code-server/config.yaml
 ENV CODE_SERVER_EXTENSIONS=$DEFAULT_WORKSPACE/.code-server/extensions/extensions.json
+
+# Copy start-code-server script
+COPY --chmod=755 .devcontainer/docker/utils/start-code-server.sh /usr/local/bin/start-code-server
 
 # If standalone download is false, use root to install the .deb package
 # If standalone download is true use $USERNAME to install the tar.gz package
@@ -459,8 +516,6 @@ FROM devtools AS codeserver
 
 # Copy library scripts
 COPY --chmod=755 .devcontainer/docker/lib-scripts/codeserver-utils.sh /tmp/lib-scripts/
-# Copy start-code-server script
-COPY --chmod=755 --chown=$USERNAME:$USERNAME .devcontainer/docker/utils/start-code-server.sh /usr/local/bin/start-code-server
 
 USER root
 
@@ -482,6 +537,9 @@ ARG BIND_ADDR=0.0.0.0:13337
 ENV BIND_ADDR=$BIND_ADDR
 ENV DEBUG=false
 
+# Copy start-code-server script
+COPY --chmod=755 .devcontainer/docker/utils/start-code-server.sh /usr/local/bin/start-code-server
+
 # Don't put CODE_SERVER_CONFIG in workspace directly to avoid issues with volume mounts
 ENV CODE_SERVER_WORKSPACE=$DEFAULT_WORKSPACE
 ENV CODE_SERVER_CONFIG=/home/$USERNAME/.config/code-server/config.yaml
@@ -499,8 +557,6 @@ RUN $LOGGER "Installing code-server..." \
   && rm -rf /tmp/*
 
 # USER $USERNAME
-WORKDIR $DEFAULT_WORKSPACE
-
 WORKDIR $DEFAULT_WORKSPACE
 
 # dockerfile-utils: ignore
