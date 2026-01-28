@@ -65,7 +65,7 @@ touch "$PASSGEN" \
 #   charset: Characters to use for password generation (simple mode only; default: $DEFAULT_PASS_CHARSET)
 #           Use '[:graph:]' for all printable characters (except space)
 #           Use '[:alnum:]' for alphanumeric characters plus digits
-#           Use a custom set of characters (e.g. '0-9a-zA-Z!@#$%^&*()')
+#           Use a custom set of characters (e.g. '0-9a-zA-Z!@#\$%^&*()')
 #   min_char_per_fam: Minimum characters per family (requirements mode only; default: 2)
 #
 # Output:
@@ -79,9 +79,9 @@ simple_pass() {
 
     full_charset='[:graph:]'
     alpha_charset='[:alnum:]'
-    custom_charset='0-9a-zA-Z!%^&.@$*_:.,?-'
+    custom_charset='0-9a-zA-Z!%^&.@\$*_:.,?-'
     default_charset="\${CODESERVER_PASS_CHARSET:-\$full_charset}"
-    LC_ALL=C tr -dc "\${2:-\$default_charset}" < /dev/urandom | head -c"\${1:-\$CODESERVER_PASS_LENGTH}"
+    LC_ALL=C tr -dc "\${2:-\$default_charset}" < /dev/urandom | head -c"\${1:-\$CODESERVER_PASS_LENGTH}" || usage \$?
 }
 
 requirements_pass() {
@@ -110,129 +110,97 @@ requirements_pass() {
         ; ( LC_CTYPE=C tr -dc "\${tr_special}" </dev/urandom | head -c "\${min_char_per_fam}" ) \\
         ; ( LC_CTYPE=C tr -dc "\${tr_special_addtl}" </dev/urandom | head -c "\${min_char_per_fam}" ) \\
         ; ( LC_CTYPE=C tr -dc "\${tr_num}\${tr_lower}\${tr_upper}\${tr_special}\${tr_special_addtl}" </dev/urandom | head -c "\${remaining_chars}" ) \\
-    ) | fold -w1 | shuf | tr -d '\n'
+    ) | fold -w1 | shuf | tr -d '\n' || usage \$?
 }
 
-parse_args() {
-    qty=0
-    if [ "\$#" -eq 0 ] ; then
-        simple_pass
-    else
-        case "\$1" in
-            [0-9] | [0-9][0-9])
-                qty="\$1"
-                shift
-                ;;
-            -s|--simple)
-                shift
-                simple_pass "\$@"
-                return \$?
-                ;;
-            -r|--requirements)
-                shift
-                requirements_pass "\$@"
-                return \$?
-                ;;
-            *)
-                echo "Invalid mode: \$1" >&2
-                cat <<EOT >&2
-Usage: $PASSGEN [quantity] [mode] [length] [charset|min_char_per_fam]
+usage() {
+    code="\${1:-0}"
+    cat <<EOT >&2
+Usage: $PASSGEN [-quantity] [mode] [options] [positional_args]
 Arguments:
   quantity: Number of passwords to generate (default: 1; max: 99)
   mode: '-s|--simple' for simple password generation (default)
         '-r|--requirements' for password generation with character family requirements
-  length: Length of password to generate (default: $DEFAULT_PASS_LENGTH)
-  charset: Characters to use for password generation (simple mode only; default: $DEFAULT_PASS_CHARSET)
-          Use '[:graph:]' for all printable characters (except space)
-          Use '[:alnum:]' for alphanumeric characters plus digits
-          Use a custom set of characters (e.g. '0-9a-zA-Z!@#$%^&*()')
-  min_char_per_fam: Minimum characters per family (requirements mode only; default: 2)
-EOT
-                exit 1
-                ;;
-        esac
-    fi
 
+Options (must be used with modes):
+  -l, --length <n>              Password length (default: $DEFAULT_PASS_LENGTH)
+  -c, --charset <chars>         Character set for simple mode
+  -m, --min-char-per-fam <n>    Minimum characters per family for requirements mode (default: 2)
+
+Positional args (alternative to options):
+  length: Length of password to generate
+  charset|min_char_per_fam: Charset for simple mode or min chars for requirements mode
+
+Examples:
+  $PASSGEN -r -l 16
+  $PASSGEN -s -l 32 -c 'a-zA-Z0-9!@#\\\$%^&*()'
+  $PASSGEN 20 '0-9a-zA-Z!@#\\\$%^&*()'
+  $PASSGEN -5 -r -l 20
+  $PASSGEN --simple 12 'a-zA-Z0-9'
+  $PASSGEN --requirements 16 3
+EOT
+    exit "\$code"
+}
+
+parse_args() {
+    case "\$1" in
+        -s|--simple)
+            shift
+            while [ "\$#" -gt 0 ]; do
+                case "\$1" in
+                    -l|--length) length="\$2"; shift 2 ;;
+                    -c|--charset) charset="\$2"; shift 2 ;;
+                    -m|--min-char-per-fam)
+                        LEVEL='!' $LOGGER "-m|--min-char-per-fam is not valid with -s|--simple mode"
+                        usage 1
+                        ;;
+                    *) break ;;
+                esac
+            done
+            simple_pass "\${length:-\$1}" "\${charset:-\$2}"
+            return \$?
+            ;;
+        -r|--requirements)
+            shift
+            while [ "\$#" -gt 0 ]; do
+                case "\$1" in
+                    -l|--length) length="\$2"; shift 2 ;;
+                    -m|--min-char-per-fam) min_char="\$2"; shift 2 ;;
+                    -c|--charset)
+                        LEVEL='!' $LOGGER "-c|--charset is not valid with -r|--requirements mode"
+                        usage 1
+                        ;;
+                    *) break ;;
+                esac
+            done
+            requirements_pass "\${length:-\$1}" "\${min_char:-\$2}"
+            return \$?
+            ;;
+        *)
+            simple_pass "\$@"
+            return \$?
+            ;;
+    esac
+}
+
+passgen() {
+    qty=0
+    case "\$1" in
+        -[0-9] | -[0-9][0-9])
+            qty="\${1#-}"
+            shift
+            ;;
+    esac
     if [ "\$qty" -gt 0 ] ; then
         count=0
         while [ \$count -lt "\$qty" ]; do
             printf "%s\n" "\$(parse_args \$@)"
             count=\$(( count + 1 ))
         done
+    else
+        parse_args "\$@"
     fi
 }
 
-passgen() {
-    parse_args "\$@"
-}
-
 passgen "\$@"
-EOF
-
-touch "$FIXPATH" \
-    && chmod +x "$FIXPATH" \
-    && cat > "$FIXPATH" << EOF
-#!/bin/sh
-
-set -eu
-
-# Fix PATH to use the PATH variable from /etc/environment
-
-# Usage: $FIXPATH [term]
-#
-# Arguments:
-#   term: Term to search for in PATH (default: /usr/local/sbin)
-#        Expected to be the first common entry in the
-#        /etc/environment PATH and exported PATH. Typically
-#        the first entry in PATH, and usually /usr/local/sbin
-#        for Debian-based systems.
-#
-# Output:
-#   Fixed PATH string
-
-term=\${1:-/usr/local/sbin}
-search=\$(echo "\$PATH" | awk -F"\${term}:" '{print \$2}')
-replace=\$(sed -nE '1s|^PATH=\"(.*)\"|\1|p' /etc/environment 2>/dev/null)
-
-if ! echo "\$PATH" | grep -q "\$replace" ; then
-  replaced=\$(echo "\$PATH" | sed "s|\$search|\$replace|g" 2>/dev/null)
-  PATH=\$(echo "\$replaced" | sed "s|\${term}:||" 2>/dev/null)
-fi
-
-# Remove duplicate entries from PATH
-# https://unix.stackexchange.com/questions/40749/remove-duplicate-path-entries-with-awk-command
-__path=\$PATH:
-PATH=
-while [ -n "\$__path" ]; do
-  x=\${__path%%:*}          # Extract the first entry
-  case \$PATH: in
-    *:"\$x":*) ;;           # If already in PATH, do nothing
-    *) PATH=\$PATH:\$x;;    # Otherwise, append it
-  esac
-  __path=\${__path#*:}      # Remove the first entry from the list
-done
-PATH=\${PATH#:}             # Remove the leading colon
-
-printf "%s" "\$PATH"
-EOF
-
-touch "/usr/local/bin/docker-entrypoint.sh" \
-    && chmod +x /usr/local/bin/docker-entrypoint.sh \
-    && cat > "/usr/local/bin/docker-entrypoint.sh" << EOF
-#!/bin/sh
-
-set -e
-
-if [ "\$RESET_ROOT_PASS" = "true" ] ; then
-  printf "\033[1m%s\033[0m\n" "Updating root password ..."
-  sudo passwd root
-fi
-
-if type /usr/games/fortune >/dev/null 2>&1 \
-  && type /usr/games/cowsay >/dev/null 2>&1
-then
-  /usr/games/fortune | /usr/games/cowsay
-fi
-
-exec "\$@"
 EOF

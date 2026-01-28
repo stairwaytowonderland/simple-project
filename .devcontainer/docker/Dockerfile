@@ -3,7 +3,8 @@ ARG IMAGE_NAME=ubuntu
 ARG VARIANT=${VARIANT:-latest}
 ARG BASE_IMAGE=${IMAGE_NAME}:${VARIANT}
 ARG DEV_PARENT_IMAGE=devuser
-FROM ${BASE_IMAGE} AS builder
+# --------------------------------------------------------------
+FROM $BASE_IMAGE AS builder
 
 # Build arguments need to be re-declared if used in FROM instructions
 # (https://docs.docker.com/build/building/variables/#scoping)
@@ -16,7 +17,6 @@ ARG DEV_PARENT_IMAGE
 ARG PASSGEN=/usr/local/bin/passgen.sh
 ENV PASSGEN=$PASSGEN
 ARG LOGGER=/usr/local/bin/logger.sh
-ARG FIXPATH=/usr/local/bin/fixpath.sh
 ARG TIMEZONE=UTC
 
 # Timezone and locale settings
@@ -44,8 +44,7 @@ COPY --chmod=755 .devcontainer/docker/lib-scripts/builder-*.sh /tmp/lib-scripts/
 USER root
 
 # Update and install essential packages
-RUN sed -i "s|\$LOGGER|$LOGGER|g" /tmp/lib-scripts/builder-generators.sh \
-  && /tmp/lib-scripts/builder-generators.sh \
+RUN /tmp/lib-scripts/builder-generators.sh \
   && /tmp/lib-scripts/builder-utils.sh \
   # Cleanup
   && apt-get clean -y \
@@ -169,6 +168,7 @@ ARG USER_GID=$USER_UID
 ARG DEV=false
 ENV DEV=$DEV
 
+ARG FIXPATH=/usr/local/bin/fixpath.sh
 # Default path to Homebrew binary (for convenience; not likely to change)
 ARG BREW=/home/linuxbrew/.linuxbrew/bin/brew
 # Path to pipx binary locator script
@@ -309,7 +309,6 @@ echo q \\
 # while read -r line; do
 #   cat \$healthcheck > /dev/null 2>&1
 # done
-
 EOF
 
 # Switch to non-root user
@@ -410,6 +409,25 @@ RUN if type "$BREW" > /dev/null 2>&1; then \
     && $("$PIPX") install poetry \
     && $("$PIPX") install uv; \
   fi
+
+COPY --chmod=755 <<EOF /usr/local/bin/docker-entrypoint.sh
+#!/bin/sh
+
+set -e
+
+if [ "\$RESET_ROOT_PASS" = "true" ] ; then
+  printf "\033[1m%s\033[0m\n" "Updating root password ..."
+  sudo passwd root
+fi
+
+if type /usr/games/fortune >/dev/null 2>&1 \
+  && type /usr/games/cowsay >/dev/null 2>&1
+then
+  /usr/games/fortune | /usr/games/cowsay
+fi
+
+exec "\$@"
+EOF
 
 ENTRYPOINT ["docker-entrypoint.sh"]
 
