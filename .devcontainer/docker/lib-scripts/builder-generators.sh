@@ -73,6 +73,7 @@ touch "$PASSGEN" \
 
 DEFAULT_PASS_LENGTH="\${DEFAULT_PASS_LENGTH:-$DEFAULT_PASS_LENGTH}"
 DEFAULT_PASS_CHARSET="\${DEFAULT_PASS_CHARSET:-$DEFAULT_PASS_CHARSET}"
+DEFAULT_MAX_QUANTITY="\${DEFAULT_MAX_QUANTITY:-10000}"
 
 simple_pass() {
     # Does not guarantee character family requirements
@@ -187,13 +188,12 @@ parse_args() {
 
 passgen() {
     qty=0
-    case "\$1" in
-        -[0-9] | -[0-9][0-9])
-            qty="\${1#-}"
-            shift
-            ;;
-    esac
-    if [ "\$qty" -gt 0 ] ; then
+    first_arg="\${1-}"
+    if echo "\$first_arg" | grep -qE "^-[0-9]+$"; then
+        qty="\${first_arg#-}"
+        shift
+    fi
+    if [ "\$qty" -gt 0 ] && [ "\$qty" -lt "\$DEFAULT_MAX_QUANTITY" ]; then
         count=0
         while [ \$count -lt "\$qty" ]; do
             printf "%s\n" "\$(parse_args \$@)"
