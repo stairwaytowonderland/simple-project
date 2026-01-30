@@ -4,25 +4,27 @@ set -e
 
 LEVEL='*' $LOGGER "Installing common utilities and dependencies..."
 
-apt-get update
-
-export DEBIAN_FRONTEND=noninteractive
+# shellcheck disable=SC1091
+. /helpers/install-helper.sh
 
 # * Always install system Python3
-apt-get -y install --no-install-recommends \
-    ca-certificates \
-    gnupg2 \
-    curl \
-    wget \
-    unzip \
-    vim \
-    nano \
-    less \
-    procps \
-    lsb-release \
-    tzdata \
-    python3 \
-    jq \
-    yq
+PACKAGES_TO_INSTALL="${PACKAGES_TO_INSTALL% } $(
+    cat << EOF
+ca-certificates
+gnupg2
+curl
+vim
+nano
+less
+procps
+lsb-release
+tzdata
+python3
+jq
+yq
+EOF
+)"
+
+update_and_install "${PACKAGES_TO_INSTALL# }"
 
 $LOGGER "Done! Common utilities installation complete."

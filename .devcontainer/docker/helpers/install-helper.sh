@@ -132,20 +132,41 @@ __set_url_parts() {
     DOWNLOAD_ARCH="$(__get_arch "$DOWNLOAD_PLATFORM")" || return $?
 }
 
-__install_tar() {
+__install_from_tarball() {
     DOWNLOAD_URL="${1-}"
     INSTALL_PREFIX="${2-"/usr/local"}"
+    file_ext="${DOWNLOAD_URL##*.}"
+    case "$file_ext" in
+        gz | tgz)
+            tar_opts="z"
+            ;;
+        xz)
+            tar_opts="J"
+            ;;
+        bz2 | bz)
+            tar_opts="j"
+            ;;
+        *)
+            LEVEL='!' $LOGGER "Unsupported tarball extension: $file_ext"
+            return 1
+            ;;
+    esac
 
     mkdir -p "$INSTALL_PREFIX"
     LEVEL='*' $LOGGER "Downloading from $DOWNLOAD_URL ..."
     (
         set -x
-        curl -fsSL "$DOWNLOAD_URL" | tar -C "$INSTALL_PREFIX" -xzf -
+        curl -fsSL "$DOWNLOAD_URL" | tar -C "$INSTALL_PREFIX" -"xv${tar_opts}f" -
     )
 }
 
-__install_deb() {
+__install_from_package() {
     DOWNLOAD_URL="${1-}"
+    file_ext="${DOWNLOAD_URL##*.}"
+    [ "$file_ext" = "deb" ] || {
+        LEVEL='!' $LOGGER "Unsupported package extension: $file_ext"
+        return 1
+    }
 
     LEVEL='*' $LOGGER "Downloading from $DOWNLOAD_URL ..."
     (
@@ -174,5 +195,5 @@ export DOWNLOAD_VERSION DOWNLOAD_PLATFORM DOWNLOAD_OS DOWNLOAD_ARCH DOWNLOAD_URL
 #         $LOGGER "Failed to determine download parameters for owner/repo version $VERSION"
 #         exit 1
 #     fi
-#     __install_tar "$DOWNLOAD_URL"
+#     __install_from_tarball "$DOWNLOAD_URL"
 # }

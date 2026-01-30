@@ -9,11 +9,13 @@
 #   --progress=plain
 #   .
 
+echo "(ƒ) Preparing for Docker image build..." >&2
+
 # ---------------------------------------
 set -euo pipefail
 
 if [ -z "$0" ]; then
-    echo "Cannot determine script path"
+    echo "(!) Cannot determine script path" >&2
     exit 1
 fi
 
@@ -52,6 +54,8 @@ fi
 
 . "$script_dir/load-env.sh" "$script_dir/.."
 
+# ---------------------------------------
+
 BASE_IMAGE_NAME="${BASE_IMAGE_NAME:-ubuntu}"
 BASE_IMAGE_VARIANT="${BASE_IMAGE_VARIANT:-latest}"
 
@@ -66,13 +70,13 @@ else
     BUILD_CONTEXT="${BUILD_CONTEXT:-"$script_dir/../../.."}"
 fi
 if [ ! -d "$BUILD_CONTEXT" ]; then
-    echo "Docker context directory not found at expected path: $BUILD_CONTEXT"
+    echo "(!) Docker context directory not found at expected path: $BUILD_CONTEXT" >&2
     exit 1
 fi
 # Determine IMAGE_NAME and DOCKER_TARGET
 IMAGE_NAME=${IMAGE_NAME:-$first_arg}
 if [ -z "$IMAGE_NAME" ]; then
-    echo "Usage: $0 <image-name[:build_target]> [build-args...] [options] [context]"
+    echo "Usage: $0 <image-name[:build_target]> [build-args...] [options] [context]" >&2
     exit 1
 fi
 if [ -n "${IMAGE_NAME##*:}" ] && [ "${IMAGE_NAME##*:}" != "$IMAGE_NAME" ]; then
@@ -83,38 +87,54 @@ DOCKER_TARGET=${DOCKER_TARGET:-"base"}
 # Determine REMOTE_USER (the devcontainer non-root user, e.g., 'vscode' or 'devcontainer')
 REMOTE_USER="${REMOTE_USER:-$second_arg}"
 
-tag_prefix="${IMAGE_NAME}:${DOCKER_TARGET}"
-# Append base image name if variant is 'latest'
-[ "$BASE_IMAGE_VARIANT" != "latest" ] || tag_prefix="${tag_prefix}-${BASE_IMAGE_NAME}"
+if [ "$DOCKER_TARGET" = "filez" ]; then
+    build_tag="$DOCKER_TARGET"
+else
+    tag_prefix="${IMAGE_NAME}:${DOCKER_TARGET}"
+    # Append base image name if variant is 'latest'
+    [ "$BASE_IMAGE_VARIANT" != "latest" ] || tag_prefix="${tag_prefix}-${BASE_IMAGE_NAME}"
 
-build_tag="${tag_prefix}-${BASE_IMAGE_VARIANT}"
+    build_tag="${tag_prefix}-${BASE_IMAGE_VARIANT}"
+fi
 
 dockerfile_path="$BUILD_CONTEXT/.devcontainer/docker/Dockerfile"
 
 if [ ! -f "$dockerfile_path" ]; then
-    echo "Dockerfile not found at expected path: $dockerfile_path"
+    echo "(!) Dockerfile not found at expected path: $dockerfile_path" >&2
     exit 1
 fi
 
-echo "Building Docker image for $DOCKER_TARGET..."
-echo "Dockerfile path: $dockerfile_path"
-echo "Docker context: $BUILD_CONTEXT"
+# dedupe() {
+#     local str="${1}"
+#     local -a temp_arr
+#     [ -n "$str" ] || return $?
+#     # Parse str into an array
+#     IFS="," read -r -a temp_arr <<< "$str"
+#     # Remove duplicate platforms from the array
+#     read -r -a temp_arr <<< "$(printf '%s\n' "${temp_arr[@]}" | sort -u | xargs echo)"
+#     # Return comma-separated string
+#     local IFS=","
+#     echo "${temp_arr[*]}"
+# }
+# # Define the array being set by dedupe so IDE is aware of it
+# build_platforms="$(dedupe "${PLATFORM:-linux/amd64,linux/arm64}")"
+# # Split on comma to create array
+# IFS="," read -r -a platforms <<< "${build_platforms}"
+
+echo "(*) Building Docker image for $DOCKER_TARGET..." >&2
+echo "(*) Dockerfile path: $dockerfile_path" >&2
+echo "(*) Docker context: $BUILD_CONTEXT" >&2
 com=(docker build)
 com+=("-f" "$dockerfile_path")
-com+=("--label" "org.opencontainers.image.ref.name=$build_tag")
-com+=("--label" "org.opencontainers.image.title=$REPO_NAME - $DOCKER_TARGET - $BASE_IMAGE_NAME - $BASE_IMAGE_VARIANT")
-com+=("--label" "org.opencontainers.image.source=https://github.com/$REPO_NAMESPACE/$REPO_NAME")
-com+=("--label" "org.opencontainers.image.description=A simple Debian-based Docker image with essential development tools and Homebrew.")
-com+=("--label" "org.opencontainers.image.licenses=MIT")
+com+=("--label" "org.opencontainers.image.build_tag=$build_tag")
+# com+=("--label" "org.opencontainers.image.ref.name=$build_tag")
+# com+=("--label" "org.opencontainers.image.title=$REPO_NAME - $DOCKER_TARGET - $BASE_IMAGE_NAME - $BASE_IMAGE_VARIANT")
+# com+=("--label" "org.opencontainers.image.source=https://github.com/$REPO_NAMESPACE/$REPO_NAME")
+# com+=("--label" "org.opencontainers.image.description=A simple Debian-based Docker image with essential development tools and Homebrew.")
+# com+=("--label" "org.opencontainers.image.licenses=MIT")
 com+=("--target" "$DOCKER_TARGET")
 com+=("-t" "$build_tag")
-
-if [ "${BASE_IMAGE_NAME}" = "ubuntu" ]; then
-    com+=("--platform=linux/arm64,linux/amd64")
-elif [ "${BASE_IMAGE_NAME}" = "debian" ]; then
-    com+=("--platform=linux/arm64")
-fi
-
+com+=("--platform=${PLATFORM:-linux/amd64,linux/arm64}")
 # The `debian:bookworm-slim` image provides a minimal base for development containers
 com+=("--build-arg" "IMAGE_NAME=${BASE_IMAGE_NAME}")
 com+=("--build-arg" "VARIANT=${BASE_IMAGE_VARIANT}")
@@ -136,4 +156,6 @@ com+=("$BUILD_CONTEXT")
 set -- "${com[@]}"
 . "$script_dir/exec-com.sh" "$@"
 
-echo "Done! Docker image build complete."
+echo "(√) Done! Docker image build complete." >&2
+echo "________________________________________" >&2
+echo >&2

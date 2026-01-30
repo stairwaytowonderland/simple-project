@@ -5,9 +5,9 @@ ARG BASE_IMAGE=${IMAGE_NAME}:${VARIANT}
 ARG DEV_PARENT_IMAGE=devuser
 
 # --------------------------------------------------------------
-# Generator stage for core utility scripts
+# Generator stage for core helper scripts
 # --------------------------------------------------------------
-FROM scratch AS generator
+FROM scratch AS filez
 
 ARG LOGGER=/usr/local/bin/logger.sh \
     PASSGEN=/usr/local/bin/passgen.sh \
@@ -35,22 +35,22 @@ LEVEL="\${LEVEL:-info}"
 
 log() {
   timestamp="\$(date +'%Y-%m-%d %H:%M:%S')"
-  template="[%s] [%s] %s\n"
+  template="[%s] [%s] %s"
 
   case "\$LEVEL" in
-    debug|info|warning|error) LEVEL=\$(echo \$LEVEL | tr '[:lower:]' '[:upper:]') ;;
+    debug|info|warning|error) LEVEL="\$(echo "\$LEVEL" | tr '[:lower:]' '[:upper:]')" ;;
     \*)
-        LEVEL='*'
-        template="[%s] (%s) %s\n"
+        LEVEL="*"
+        template="[%s] (%s) %s"
         ;;
     \!)
-        LEVEL='!'
-        template="[%s] (%s) Error! %s\n"
+        LEVEL="!"
+        template="[%s] (%s) Error! %s"
         ;;
     *) LEVEL="info" ;;
   esac
 
-  printf "\$template" "\$timestamp" "\$LEVEL" "\$*" >&2
+  printf "\${template}\\n" "\${timestamp}" "\${LEVEL}" "\$*" >&2
 }
 
 main() {
@@ -87,7 +87,7 @@ COPY --chmod=755 <<EOF $PASSGEN
 
 DEFAULT_PASS_LENGTH="\${DEFAULT_PASS_LENGTH:-$DEFAULT_PASS_LENGTH}"
 DEFAULT_PASS_CHARSET="\${DEFAULT_PASS_CHARSET:-$DEFAULT_PASS_CHARSET}"
-DEFAULT_MAX_QUANTITY="\${DEFAULT_MAX_QUANTITY:-10000}"
+DEFAULT_MAX_QTY="\${DEFAULT_MAX_QTY:-10000}"
 
 simple_pass() {
     # Does not guarantee character family requirements
@@ -207,10 +207,10 @@ passgen() {
         qty="\${first_arg#-}"
         shift
     fi
-    if [ "\$qty" -gt 0 ] && [ "\$qty" -lt "\$DEFAULT_MAX_QUANTITY" ]; then
+    if [ \$qty -gt 0 ] && [ \$qty -lt "\$DEFAULT_MAX_QTY" ]; then
         count=0
-        while [ \$count -lt "\$qty" ]; do
-            printf "%s\n" "\$(parse_args \$@)"
+        while [ \$count -lt \$qty ]; do
+            printf "%s\\n" "\$(parse_args \$@)"
             count=\$(( count + 1 ))
         done
     else
@@ -220,6 +220,8 @@ passgen() {
 
 passgen "\$@"
 EOF
+
+COPY .devcontainer/docker/helpers/*.sh /helpers/
 
 # --------------------------------------------------------------
 
@@ -249,9 +251,10 @@ ENV TZ=$TIMEZONE \
 
 # Copy library scripts
 COPY --chmod=755 .devcontainer/docker/lib-scripts/builder-*.sh /tmp/lib-scripts/
-
 # Copy logger script
-COPY --from=generator $LOGGER $LOGGER
+COPY --from=filez $LOGGER $LOGGER
+# Copy helper scripts
+COPY --from=filez /helpers /helpers
 
 USER root
 
@@ -279,7 +282,7 @@ ENV PASSGEN=$PASSGEN \
     DEFAULT_PASS_LENGTH=$DEFAULT_PASS_LENGTH \
     DEFAULT_PASS_CHARSET=$DEFAULT_PASS_CHARSET
 # Copy passgen script
-COPY --from=generator $PASSGEN $PASSGEN
+COPY --from=filez $PASSGEN $PASSGEN
 
 # As of Ubuntu 24 (Noble Numbat), the Ubuntu base image comes with a non-root user ubuntu with UID 1000
 # Delete this user to avoid conflicts when creating our own non-root user
@@ -363,9 +366,7 @@ ENV NODEJS_HOME=/usr/local/lib/nodejs
 ENV PATH="$NODEJS_HOME/bin:$PATH"
 
 # Copy library scripts
-COPY --chmod=755 .devcontainer/docker/lib-scripts/install-helper.sh \
-    .devcontainer/docker/lib-scripts/node-install.sh \
-    /tmp/lib-scripts/
+COPY --chmod=755 .devcontainer/docker/lib-scripts/node-install.sh /tmp/lib-scripts/
 
 USER root
 
@@ -557,11 +558,11 @@ HEALTHCHECK --interval=5s --timeout=3s --start-period=1s --retries=3 \
 
 CMD ["healthcheck.sh"]
 
-LABEL org.opencontainers.image.ref.name="<repo-name>:devcontainer-$BASE_IMAGE"
-LABEL org.opencontainers.image.title="<repo-name> - devcontainer - $IMAGE_NAME - $VARIANT"
-LABEL org.opencontainers.image.source=<server-fqdn>/<repo-owner-or-namespace>/<repo-name>
-LABEL org.opencontainers.image.description="A simple Debian-based Docker image with essential development tools and Homebrew."
-LABEL org.opencontainers.image.licenses=MIT
+# LABEL org.opencontainers.image.ref.name="<repo-name>:devcontainer-$BASE_IMAGE"
+# LABEL org.opencontainers.image.title="<repo-name> - devcontainer - $IMAGE_NAME - $VARIANT"
+# LABEL org.opencontainers.image.source=<server-fqdn>/<repo-owner-or-namespace>/<repo-name>
+# LABEL org.opencontainers.image.description="A simple Debian-based Docker image with essential development tools and Homebrew."
+# LABEL org.opencontainers.image.licenses=MIT
 
 # --------------------------------------------------------------
 
@@ -721,8 +722,7 @@ COPY --chmod=755 .devcontainer/docker/utils/start-code-server.sh /usr/local/bin/
 # If standalone download is false, use root to install the .deb package
 # If standalone download is true use $USERNAME to install the tar.gz package
 USER $USERNAME
-COPY --chmod=755 --chown=$USERNAME:$USERNAME .devcontainer/docker/lib-scripts/install-helper.sh \
-    .devcontainer/docker/lib-scripts/codeserver-install.sh \
+COPY --chmod=755 --chown=$USERNAME:$USERNAME .devcontainer/docker/lib-scripts/codeserver-install.sh \
     /tmp/lib-scripts/
 
 RUN $LOGGER "Installing code-server..." \
@@ -790,8 +790,7 @@ COPY --chmod=755 .devcontainer/docker/utils/start-code-server.sh /usr/local/bin/
 # If standalone download is false, use root to install the .deb package
 # If standalone download is true use $USERNAME to install the tar.gz package
 USER $USERNAME
-COPY --chmod=755 --chown=$USERNAME:$USERNAME .devcontainer/docker/lib-scripts/install-helper.sh \
-    .devcontainer/docker/lib-scripts/codeserver-install.sh \
+COPY --chmod=755 --chown=$USERNAME:$USERNAME .devcontainer/docker/lib-scripts/codeserver-install.sh \
     /tmp/lib-scripts/
 
 RUN $LOGGER "Installing code-server..." \

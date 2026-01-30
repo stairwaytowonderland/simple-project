@@ -6,11 +6,13 @@
 # Example:
 # ./.devcontainer/docker/bin/clean.sh --full -f
 
+echo "(ƒ) Preparing for Docker cleanup..." >&2
+
 # ---------------------------------------
 set -euo pipefail
 
 if [ -z "$0" ]; then
-    echo "Cannot determine script path"
+    echo "(!) Cannot determine script path" >&2
     exit 1
 fi
 
@@ -19,7 +21,7 @@ script_dir="$(cd "$(dirname "$script_name")" && pwd)"
 # ---------------------------------------
 
 simple_cleanup() {
-    echo "Performing simple Docker cleanup..."
+    echo "(*) Performing simple Docker cleanup..." >&2
 
     # Remove dangling images
     (
@@ -41,7 +43,7 @@ simple_cleanup() {
 }
 
 system_cleanup() {
-    echo "Cleaning up Docker system (this may take a while)..."
+    echo "(*) Cleaning up Docker system (this may take a while)..." >&2
 
     # Deep clean docker system (use with caution)
     com=(docker system)
@@ -59,7 +61,6 @@ clean() {
         case "$1" in
             --full)
                 shift
-                echo "Args remaining for full cleanup: $*"
                 if [ "$#" -gt 0 ] && [ "$1" = "--" ]; then
                     shift
                 fi
@@ -72,7 +73,7 @@ clean() {
                 break
                 ;;
             *)
-                echo "Unknown optionx: $1"
+                echo "(!) Unknown option: $1" >&2
                 exit 1
                 ;;
         esac
@@ -83,4 +84,6 @@ clean() {
 
 clean "$@"
 
-echo "Done! Docker cleanup complete."
+echo "(√) Done! Docker cleanup complete." >&2
+echo "_______________________________________" >&2
+echo >&2

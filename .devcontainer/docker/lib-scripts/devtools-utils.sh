@@ -4,18 +4,10 @@
 
 set -e
 
-install_packages() {
-    # shellcheck disable=SC2086
-    LEVEL='*' $LOGGER "Installing the following packages: "$*
-    # shellcheck disable=SC2086,SC2048
-    apt-get -y install --no-install-recommends $*
-}
-
 LEVEL='*' $LOGGER "Installing devtools utilities and dependencies..."
 
-apt-get update
-
-export DEBIAN_FRONTEND=noninteractive
+# shellcheck disable=SC1091
+. /helpers/install-helper.sh
 
 PACKAGES_TO_INSTALL="${PACKAGES_TO_INSTALL% } $(
     cat << EOF
@@ -47,9 +39,9 @@ libatomic1
 EOF
     )"
 
-    install_packages "${PACKAGES_TO_INSTALL# }"
+    update_and_install "${PACKAGES_TO_INSTALL# }"
 else
-    install_packages "${PACKAGES_TO_INSTALL# }"
+    update_and_install "${PACKAGES_TO_INSTALL# }"
 
     # Install Node.js (LTS version) and npm
     curl -fsSL https://deb.nodesource.com/setup_lts.x | bash - \
@@ -60,7 +52,7 @@ EOF
         )" \
         && $LOGGER "Node.js and npm packages: $PACKAGES_TO_INSTALL"
 
-    install_packages "${PACKAGES_TO_INSTALL# }"
+    update_and_install "${PACKAGES_TO_INSTALL# }"
 fi
 
 $LOGGER "Done! Devtools utilities installation complete."

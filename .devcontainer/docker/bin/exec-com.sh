@@ -3,15 +3,15 @@
 com=("$@")
 
 if [ "${#com[@]}" -eq 0 ]; then
-    echo "No command to execute."
+    echo "(!) No command to execute." >&2
     exit 1
 fi
 
-printf "\033[95;1m%s\033[0m\n" "${com[*]}"
+printf "\033[95;1m§ %s\033[0m\n" "${com[*]}" >&2
 
 if command -v time > /dev/null 2>&1; then
     # TIMEFORMAT="Elapsed time: %lR seconds"
-    TIMEFORMAT=$'\nElapsed time: %lR seconds'
+    TIMEFORMAT=$'\n==> Elapsed time: %lR seconds'
     time (
         set -x
         "${com[@]}"
@@ -28,5 +28,5 @@ else
     # Hours: (duration / 3600)
     # Minutes: ((duration % 3600) / 60)
     # Seconds: (duration % 60)
-    printf "\nElapsed time: %02d hours, %02d minutes, %02d seconds\n" $((duration / 3600)) $((duration % 3600 / 60)) $((duration % 60))
+    printf "\n==> Elapsed time: %02d hours, %02d minutes, %02d seconds\n" $((duration / 3600)) $((duration % 3600 / 60)) $((duration % 60)) >&2
 fi

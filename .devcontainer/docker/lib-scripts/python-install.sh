@@ -6,23 +6,10 @@ set -e
 
 USE_PPA_IF_AVAILABLE="${USE_PPA_IF_AVAILABLE:-true}"
 
-install_packages() {
-    # shellcheck disable=SC2086
-    LEVEL='*' $LOGGER "Installing the following packages: "$*
-    # shellcheck disable=SC2086,SC2048
-    apt-get -y install --no-install-recommends $*
-}
-
-update_and_install() {
-    apt-get update
-    install_packages "$@"
-}
+# shellcheck disable=SC1091
+. /helpers/install-helper.sh
 
 LEVEL='*' $LOGGER "Installing Python utilities..."
-
-apt-get update
-
-export DEBIAN_FRONTEND=noninteractive
 
 if [ "$PYTHON_VERSION" = "system" ] \
     || { ! type "$BREW" > /dev/null 2>&1 && [ "$PYTHON_VERSION" = "latest" ]; }; then
@@ -56,7 +43,7 @@ python3-dev
 pipx
 EOF
         )"
-        install_packages "$PACKAGES_TO_INSTALL"
+        install_packages "${PACKAGES_TO_INSTALL# }"
     fi
 fi
 

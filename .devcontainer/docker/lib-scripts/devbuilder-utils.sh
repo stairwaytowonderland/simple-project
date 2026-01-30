@@ -4,20 +4,29 @@ set -e
 
 LEVEL='*' $LOGGER "Installing devuser utilities and dependencies..."
 
-apt-get update
-
-export DEBIAN_FRONTEND=noninteractive
+# shellcheck disable=SC1091
+. /helpers/install-helper.sh
 
 # * Install sudo here so production image doesn't have it
-apt-get -y install --no-install-recommends \
-    sudo \
-    bash-completion \
-    software-properties-common
+PACKAGES_TO_INSTALL="${PACKAGES_TO_INSTALL% } $(
+    cat << EOF
+sudo
+bash-completion
+software-properties-common
+EOF
+)"
+
+update_and_install "${PACKAGES_TO_INSTALL# }"
 
 # * We don't want to use --no-install-recommends here
 # since the additional utilities (games) may depend on some recommended packages.
-apt-get -y install \
-    cowsay \
-    fortune
+PACKAGES_TO_INSTALL="${PACKAGES_TO_INSTALL% } $(
+    cat << EOF
+cowsay
+fortune
+EOF
+)"
+
+install_packages --install-recommends "${PACKAGES_TO_INSTALL# }"
 
 $LOGGER "Done! Devuser utilities installation complete."

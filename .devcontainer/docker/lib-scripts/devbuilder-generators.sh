@@ -70,6 +70,6 @@ fi
 if [ "\$#" -gt 0 ]; then
   "\$_pipx" "\$@"
 else
-  printf "%s\n" "\$_pipx"
+  printf "%s\\n" "\$_pipx"
 fi
 EOF

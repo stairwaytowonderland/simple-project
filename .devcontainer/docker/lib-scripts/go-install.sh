@@ -4,9 +4,9 @@ set -e
 
 LEVEL='*' $LOGGER "Installing Go utilities..."
 
-apt-get update
-
 export DEBIAN_FRONTEND=noninteractive
+
+apt-get update
 
 PACKAGES_TO_INSTALL="${PACKAGES_TO_INSTALL% } $(
         cat << EOF

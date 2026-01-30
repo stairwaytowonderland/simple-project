@@ -3,7 +3,17 @@
 
 set -e
 
-export DEBIAN_FRONTEND=noninteractive
+# shellcheck disable=SC1091
+. /helpers/install-helper.sh
+
+PACKAGES_TO_INSTALL="${PACKAGES_TO_INSTALL% } $(
+    cat << EOF
+wget
+unzip
+EOF
+)"
+
+update_and_install "${PACKAGES_TO_INSTALL# }"
 
 if [ "$(uname -m)" = "x86_64" ]; then
     # Install AWS CLI v2 for x86_64

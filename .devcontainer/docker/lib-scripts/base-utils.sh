@@ -4,9 +4,8 @@ set -e
 
 LEVEL='*' $LOGGER "Installing base utilities and dependencies..."
 
-apt-get update
-
-export DEBIAN_FRONTEND=noninteractive
+# shellcheck disable=SC1091
+. /helpers/install-helper.sh
 
 PACKAGES_TO_INSTALL="${PACKAGES_TO_INSTALL% } $(
     cat << EOF
@@ -25,9 +24,6 @@ EOF
 fi
 
 # shellcheck disable=SC2086
-LEVEL='*' $LOGGER "Installing the following packages: ${PACKAGES_TO_INSTALL# }"
-
-# shellcheck disable=SC2086
-apt-get -y install --no-install-recommends ${PACKAGES_TO_INSTALL# }
+update_and_install "${PACKAGES_TO_INSTALL# }"
 
 $LOGGER "Done! Base utilities installation complete."

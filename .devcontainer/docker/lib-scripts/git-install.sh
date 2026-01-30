@@ -8,11 +8,11 @@ GIT_VERSION="${GIT_VERSION:-latest}"
 USE_PPA_IF_AVAILABLE="${USE_PPA_IF_AVAILABLE:-true}"
 SOURCE_AS_FALLBACK="${SOURCE_AS_FALLBACK:-false}"
 
+export DEBIAN_FRONTEND=noninteractive
+
 LEVEL='*' $LOGGER "Installing GIT..."
 
 apt-get update
-
-export DEBIAN_FRONTEND=noninteractive
 
 # * If installing from source, GIT_VERSION needs to be reset to the actual version
 # being built, since the Makefile uses it. We could also avoid using GIT_VERSION

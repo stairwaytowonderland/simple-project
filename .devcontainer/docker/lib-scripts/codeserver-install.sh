@@ -19,7 +19,7 @@ if [ "$VERSION" = "latest" ]; then
 fi
 
 # shellcheck disable=SC1091
-. /tmp/lib-scripts/install-helper.sh
+. /helpers/install-helper.sh
 
 if __set_url_parts "$GITHUB_REPO" "$VERSION" "$DOWNLOAD_PREFIX"; then
     build_url() {
@@ -43,8 +43,8 @@ rm -rf "$INSTALL_PREFIX/code-server-$DOWNLOAD_VERSION"
 
 LEVEL='*' $LOGGER "Downloading $TOOL_LABEL $DOWNLOAD_VERSION..."
 if [ "$DOWNLOAD_STANDALONE" != "true" ]; then
-    __install_deb "$DOWNLOAD_URL"
-elif __install_tar "$DOWNLOAD_URL" "$INSTALL_PREFIX"; then
+    __install_from_package "$DOWNLOAD_URL"
+elif __install_from_tarball "$DOWNLOAD_URL" "$INSTALL_PREFIX"; then
     (
         set -x
         mv "$INSTALL_PREFIX/code-server-$DOWNLOAD_VERSION-$DOWNLOAD_OS-$DOWNLOAD_ARCH" "$INSTALL_PREFIX/code-server-$DOWNLOAD_VERSION"

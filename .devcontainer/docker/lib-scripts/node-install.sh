@@ -2,16 +2,16 @@
 
 set -e
 
-export DEBIAN_FRONTEND=noninteractive
-
+NODEPATH="${NODEPATH:-/usr/local/lib/node/nodejs}"
+NODEJS_HOME="${NODEJS_HOME:-/usr/local/lib/nodejs}"
 VERSION="${NODE_VERSION:-latest}"
+
+# shellcheck disable=SC1091
+. /helpers/install-helper.sh
 
 TOOL_LABEL="Node.js"
 GITHUB_REPO="nodejs/node"
 DOWNLOAD_PREFIX="https://nodejs.org/dist/v"
-
-NODEPATH="${NODEPATH:-/usr/local/lib/node/nodejs}"
-NODEJS_HOME="${NODEJS_HOME:-/usr/local/lib/nodejs}"
 
 LEVEL='*' $LOGGER "Installing $TOOL_LABEL..."
 
@@ -21,20 +21,23 @@ if [ "$VERSION" = "latest" ] || [ "$VERSION" = "lts" ] || [ "$VERSION" = "curren
 fi
 
 # * NOTE: libatomic1 required for node and npm
+# * NOTE: xz-utils required to decompress .tar.xz files
 PACKAGES_TO_INSTALL="${PACKAGES_TO_INSTALL% } $(
     cat << EOF
 libatomic1
+xz-utils
 EOF
 )"
-
-# shellcheck disable=SC1091
-. /tmp/lib-scripts/install-helper.sh
 
 update_and_install "${PACKAGES_TO_INSTALL# }"
 
 if __set_url_parts "$GITHUB_REPO" "$VERSION" "v" "$DOWNLOAD_PREFIX"; then
+    # * Customize download URL parts
+    if [ "$DOWNLOAD_ARCH" = "amd64" ]; then
+        DOWNLOAD_ARCH="x64"
+    fi
     build_url() {
-        echo "${DOWNLOAD_URL_PREFIX}/${DOWNLOAD_VERSION}/node-${DOWNLOAD_VERSION}-${DOWNLOAD_OS}-${DOWNLOAD_ARCH}.tar.gz"
+        echo "${DOWNLOAD_URL_PREFIX}/${DOWNLOAD_VERSION}/node-${DOWNLOAD_VERSION}-${DOWNLOAD_OS}-${DOWNLOAD_ARCH}.tar.xz"
     }
     DOWNLOAD_URL="$(build_url)"
 else
@@ -47,7 +50,7 @@ rm -rf "$NODEPATH/node-$DOWNLOAD_VERSION"
 
 LEVEL='*' $LOGGER "Downloading $TOOL_LABEL $DOWNLOAD_VERSION..."
 if (
-    __install_tar "$DOWNLOAD_URL" "$NODEPATH"
+    __install_from_tarball "$DOWNLOAD_URL" "$NODEPATH"
 ); then
     (
         set -x
