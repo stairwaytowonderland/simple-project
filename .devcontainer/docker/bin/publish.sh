@@ -22,24 +22,20 @@ script_dir="$(cd "$(dirname "$script_name")" && pwd)"
 first_arg="${1-}"
 [ -z "$first_arg" ] || shift
 
-. "$script_dir/load-env.sh" "$script_dir/.."
+. "${script_dir}/load-env.sh" "${script_dir}/.."
 
 # ---------------------------------------
 
 LATEST_TARGET="${LATEST_TARGET:-base}"
 REGISTRY_HOST="${REGISTRY_HOST:-ghcr.io}"
-REGISTRY_PROVIDER="${REGISTRY_PROVIDER:-GitHub}"
-REGISTER_PROVIDER_FQDN="${REGISTER_PROVIDER_FQDN:-github.com}"
 
 BASE_IMAGE_NAME="${BASE_IMAGE_NAME:-ubuntu}"
 BASE_IMAGE_VARIANT="${BASE_IMAGE_VARIANT:-latest}"
 DEFAULT_PLATFORM="linux/$(uname -m)"
 FILEZ_TARGET="${FILEZ_TARGET:-filez}"
 
-GITHUB_TOKEN="${GITHUB_TOKEN-}"
-GH_TOKEN="${GH_TOKEN:-$GITHUB_TOKEN}"
-GITHUB_PAT="${GITHUB_PAT:-$GH_TOKEN}"
-CR_PAT="${CR_PAT:-$GITHUB_PAT}"
+REGISTRY_PROVIDER="${REGISTRY_PROVIDER:-GitHub}"
+REGISTER_PROVIDER_FQDN="${REGISTER_PROVIDER_FQDN:-github.com}"
 REPO_NAMESPACE="${REPO_NAMESPACE-}"
 REPO_NAME="${REPO_NAME-}"
 
@@ -54,15 +50,7 @@ if [ -n "${IMAGE_NAME##*:}" ] && [ "${IMAGE_NAME##*:}" != "$IMAGE_NAME" ]; then
     IMAGE_NAME="${IMAGE_NAME%%:*}"
 fi
 DOCKER_TARGET=${DOCKER_TARGET:-"base"}
-# Determine Container Registry username
-if [ $# -gt 0 ]; then
-    REGISTRY_USER="${1:-$REPO_NAMESPACE}"
-    shift
-fi
-if [ -z "${REGISTRY_USER-}" ]; then
-    echo "(!) Please provide your ${REGISTRY_PROVIDER} username as the first argument or set the REPO_NAMESPACE environment variable." >&2
-    exit 1
-fi
+
 # Determine IMAGE_VERSION
 if [ $# -gt 0 ]; then
     IMAGE_VERSION="${1-}"
@@ -88,7 +76,16 @@ else
     docker_tag="${tag_prefix}-${tag_suffix}"
 fi
 
-registry_url="${REGISTRY_HOST}/${REGISTRY_USER}/${docker_tag}"
+# * Registry login happens here
+if ! . "${script_dir}/docker-registry.sh" "$REPO_NAMESPACE" "$REPO_NAME"; then
+    echo "Error: Not logged in to ${REGISTRY_PROVIDER} Container Registry." >&2
+    exit 1
+elif [ -z "$REGISTRY_URL_PREFIX" ]; then
+    echo "Error: REGISTRY_URL_PREFIX is not set." >&2
+    exit 1
+fi
+
+REGISTRY_URL="${REGISTRY_URL_PREFIX}/${docker_tag}"
 
 capitalize() {
     printf "%s" "$1" | awk '{print toupper(substr($0,1,1)) tolower(substr($0,2))}' | tr -d '\n'
@@ -138,50 +135,48 @@ tag_image() {
     echo -e "\033[2m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\033[0m" >&2
 }
 
-tag_image "$build_tag" "$registry_url"
+tag_image "$build_tag" "$REGISTRY_URL"
 
 base_image_name_cap="$(capitalize "$BASE_IMAGE_NAME")"
 image_title="${title_prefix}${title_suffix-}"
 repo_source="https://${REGISTER_PROVIDER_FQDN}/${REPO_NAMESPACE}/${REPO_NAME}"
 revision="$(git -C "$script_dir/../../.." rev-parse HEAD)"
 description_url="${repo_source}/blob/main/.devcontainer/docker"
-description_image="Built from '${BASE_IMAGE_NAME}:${BASE_IMAGE_VARIANT}'."
-description_docs="For more information, please visit the documentation at: ${description_url}"
+description_image="Built from \`${BASE_IMAGE_NAME}:${BASE_IMAGE_VARIANT}\`."
+description_docs="For documentation and source, visit: ${description_url}"
 if [ "$multiarch" = "true" ]; then
     description_prefix="This multiarch ${base_image_name_cap:-Debian}-based"
 else
     description_prefix="This ${base_image_name_cap:-Debian}-based"
 fi
 image_description=$(
-    cat <<- EOF
+    {
+        cat <<- EOF
 ${description_prefix:-This}
-Docker image is part of the '${REPO_NAME}' collection of development container images.
+Docker image is part of the **${REPO_NAME}** collection of development container images.
 ${description_image}
 ${description_arch}
 ${description_docs}
 EOF
+    } | xargs echo
 )
-
-echo "(+) Logging in to ${REGISTRY_PROVIDER} Container Registry..." >&2
-echo "$CR_PAT" | docker login "$REGISTRY_HOST" -u "$REGISTRY_USER" --password-stdin
-echo -e "\033[2m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\033[0m" >&2
 
 echo "(∫) Publishing Docker image to ${REGISTRY_PROVIDER} Container Registry..." >&2
 com=(docker push)
-com+=("$registry_url")
+com+=("$REGISTRY_URL")
 
 set -- "${com[@]}"
 . "$script_dir/exec-com.sh" "$@"
 
 if [ "$DOCKER_TARGET" = "$LATEST_TARGET" ] && [ "${LATEST:-false}" = "true" ]; then
     latest_tag="${IMAGE_NAME}:latest"
-    registry_url="ghcr.io/${REGISTRY_USER}/${latest_tag}"
+    REGISTRY_URL="${REGISTRY_URL_PREFIX}/${latest_tag}"
 
     echo "(*) Tagging with 'latest'..." >&2
-    tag_image "$build_tag" "$registry_url"
+    tag_image "$build_tag" "$REGISTRY_URL"
 
     com=(docker push)
-    com+=("$registry_url")
+    com+=("$REGISTRY_URL")
 
     set -- "${com[@]}"
     . "$script_dir/exec-com.sh" "$@"
@@ -201,16 +196,16 @@ remove_danglers() {
 
 remove_danglers "$build_tag"
 
-echo "(∫) Adding annotations to ${registry_url} ..." >&2
+echo "(∫) Adding annotations to ${REGISTRY_URL} ..." >&2
 
 # Add OCI annotations to the image manifest
 # https://docs.docker.com/reference/cli/docker/buildx/imagetools/
 # https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry#labelling-container-images
 # https://github.com/opencontainers/image-spec/blob/main/annotations.md#pre-defined-annotation-keys
 com=(docker buildx imagetools create)
-com+=("-t" "${registry_url}")
+com+=("-t" "${REGISTRY_URL}")
 # https://specs.opencontainers.org/image-spec/annotations/
-com+=("--annotation" "${annotation_prefix}org.opencontainers.image.description=${image_description}")
+com+=("--annotation" "${annotation_prefix}org.opencontainers.image.description=${image_description//\\\`/\`}")
 com+=("--annotation" "${annotation_prefix}org.opencontainers.image.title=${image_title%.}${title_arch# }")
 com+=("--annotation" "${annotation_prefix}org.opencontainers.image.source=${repo_source}")
 if [ "$(lowercase "$REGISTRY_PROVIDER")" = "github" ]; then
@@ -226,7 +221,7 @@ com+=("--annotation" "${annotation_prefix}org.opencontainers.image.vendor=${REPO
 com+=("--annotation" "${annotation_prefix}org.opencontainers.image.base.name=${BASE_IMAGE_NAME}")
 com+=("--annotation" "${annotation_prefix}org.opencontainers.image.base.variant=${BASE_IMAGE_VARIANT}")
 com+=("--annotation" "${annotation_prefix}org.opencontainers.image.licenses=MIT")
-com+=("$registry_url")
+com+=("$REGISTRY_URL")
 
 set -- "${com[@]}"
 . "${script_dir}/exec-com.sh" "$@"
@@ -234,7 +229,7 @@ set -- "${com[@]}"
 # Pull the manifest to ensure local availability
 # echo "Pulling the published Docker image manifest to ensure local availability..."
 # pull_com=(docker pull)
-# pull_com+=("$registry_url")
+# pull_com+=("$REGISTRY_URL")
 
 # set -- "${pull_com[@]}"
 # . "${script_dir}/exec-com.sh" "$@"

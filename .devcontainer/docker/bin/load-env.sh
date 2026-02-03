@@ -15,6 +15,47 @@ __load_env() {
     fi
 }
 
+# * Helper function to deduplicate comma-separated strings and sort results
+# Behavior:
+# - If arr_name is provided, sets the variable with that name to the deduplicated array
+# - If arr_name is not provided, echoes the deduplicated comma-separated string
+# Usage: dedupe [sort] str [arr_name]
+# Args:
+#   str: Comma-separated string to deduplicate
+#   arr_name: (Optional) Name of the variable to set with the deduplicated array
+# Example:
+#   result_str=$(dedupe false "c,a,b,a,b")
+#   dedupe "c,a,b,a,b" my_array
+# ! Caution: Uses eval to set variable by name for bash 3 compatibility
+dedupe() {
+    local str arr_name sort=true
+    if [ "$1" = "true" ] || [ "$1" = "false" ]; then
+        sort="$1"
+        shift
+    fi
+    str="${1}"
+    arr_name="${2-}"
+    local -a temp_arr
+    [ -n "$str" ] || return $?
+    # Parse str into an array
+    IFS="," read -r -a temp_arr <<< "$str"
+    # Remove duplicate entries from the array
+    if [ "$sort" != "true" ]; then
+        # Use `awk '!seen[$0]++'` to filter for unique entries while preserving the original order
+        read -r -a temp_arr <<< "$(printf '%s\n' "${temp_arr[@]}" | awk '!seen[$0]++' | xargs echo)"
+    else
+        # Sort and deduplicate
+        read -r -a temp_arr <<< "$(printf '%s\n' "${temp_arr[@]}" | sort -u | xargs echo)"
+    fi
+    if [ -n "$arr_name" ]; then
+        eval "$arr_name"="($(printf '%q ' "${temp_arr[@]}"))"
+    else
+        # Return comma-separated string
+        local IFS=","
+        echo "${temp_arr[*]}"
+    fi
+}
+
 load_env() {
     # Declare script path variables in local scope since this is called from other scripts
     # ---------------------------------------

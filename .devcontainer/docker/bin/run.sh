@@ -23,7 +23,7 @@ script_dir="$(cd "$(dirname "$script_name")" && pwd)"
 # Specify last argument as context if it's a directory
 last_arg="${*: -1}"
 
-. "$script_dir/load-env.sh" "$script_dir/.."
+. "${script_dir}/load-env.sh" "${script_dir}/.."
 
 # ---------------------------------------
 

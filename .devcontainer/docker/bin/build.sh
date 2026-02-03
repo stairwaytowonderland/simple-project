@@ -52,7 +52,7 @@ else
     esac
 fi
 
-. "$script_dir/load-env.sh" "$script_dir/.."
+. "${script_dir}/load-env.sh" "${script_dir}/.."
 
 # ---------------------------------------
 
@@ -102,22 +102,6 @@ if [ ! -f "$dockerfile_path" ]; then
     exit 1
 fi
 
-# dedupe() {
-#     local str="${1}"
-#     local -a temp_arr
-#     [ -n "$str" ] || return $?
-#     # Parse str into an array
-#     IFS="," read -r -a temp_arr <<< "$str"
-#     # Remove duplicate platforms from the array
-#     read -r -a temp_arr <<< "$(printf '%s\n' "${temp_arr[@]}" | sort -u | xargs echo)"
-#     # Return comma-separated string
-#     local IFS=","
-#     echo "${temp_arr[*]}"
-# }
-# build_platforms="$(dedupe "${PLATFORM:-linux/amd64,linux/arm64}")"
-# # Split on comma to create array
-# IFS="," read -r -a platforms <<< "${build_platforms}"
-
 zoneinfo() {
     echo "(+) Determining timezone..." >&2
     local DEFAULT_TIMEZONE=UTC
@@ -141,7 +125,7 @@ com+=("-f" "${dockerfile_path}")
 com+=("--label" "org.opencontainers.image.ref.name=${build_tag}")
 com+=("--target" "${DOCKER_TARGET}")
 com+=("-t" "${build_tag}")
-com+=("--platform=${PLATFORM:-$DEFAULT_PLATFORM}")
+com+=("--platform=$(dedupe "${PLATFORM:-$DEFAULT_PLATFORM}")")
 # The `debian:bookworm-slim` image provides a minimal base for development containers
 com+=("--build-arg" "IMAGE_NAME=${BASE_IMAGE_NAME}")
 com+=("--build-arg" "VARIANT=${BASE_IMAGE_VARIANT}")

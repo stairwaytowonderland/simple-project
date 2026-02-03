@@ -20,7 +20,7 @@ script_dir="$(cd "$(dirname "$script_name")" && pwd)"
 # Specify last argument as context if it's a directory
 last_arg="${*: -1}"
 
-. "$script_dir/load-env.sh" "$script_dir/.."
+. "${script_dir}/load-env.sh" "${script_dir}/.."
 
 # ---------------------------------------
 
@@ -45,6 +45,11 @@ CODESERVER_BIND_ADDR="${CODESERVER_HOST_IP}:${CODESERVER_CONTAINER_PORT}"
 REPO_NAME="${REPO_NAME-}"
 REPO_NAMESPACE="${REPO_NAMESPACE-}"
 bin_dir=".devcontainer/docker/bin"
+
+if ! . "${script_dir}/docker-registry.sh" "$REPO_NAMESPACE" "$REPO_NAME"; then
+    echo "Error: Not logged in to ${REGISTRY_PROVIDER} Container Registry." >&2
+    exit 1
+fi
 
 main() {
     # Newline-separated list of commands to run
