@@ -13,6 +13,8 @@ for this project.
     │   ├── Dockerfile          # Multi-stage Dockerfile
     │   ├── README.md
     │   ├── bin/                # Shell scripts for container lifecycle management
+    │   ├── helpers/            # Helper "scripts" with useful functions;
+    │   │                         meant to be sourced from other scripts
     │   ├── lib-scripts/        # Container installer scripts
     │   └── utils/              # Container utility scripts
     ├── devcontainer.json       # VS Code Dev Container configuration

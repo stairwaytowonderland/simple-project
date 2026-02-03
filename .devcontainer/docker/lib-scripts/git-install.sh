@@ -1,7 +1,11 @@
 #!/usr/bin/env bash
 
+# * Description: Install GIT from PPA or source
 # ! NOTE: Installing GIT from source causes issues for the gh CLI dev container feature
 
+# Only check for errors (set -e)
+# Don't check for unset variables (set -u) since variables are set in Dockerfile
+# Pipepail (set -o pipefail) is not available in sh
 set -e
 
 GIT_VERSION="${GIT_VERSION:-latest}"
@@ -14,7 +18,7 @@ LEVEL='ƒ' $LOGGER "Installing GIT..."
 
 apt-get update
 
-# * If installing from source, GIT_VERSION needs to be reset to the actual version
+# ! Important: If installing from source, GIT_VERSION needs to be reset to the actual version
 # being built, since the Makefile uses it. We could also avoid using GIT_VERSION
 # as a global variable, but resetting the variable for the build is simpler.
 get_version() {

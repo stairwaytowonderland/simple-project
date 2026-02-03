@@ -1,5 +1,8 @@
 #!/bin/sh
 
+# Only check for errors (set -e)
+# Don't check for unset variables (set -u) since variables are set in Dockerfile
+# Pipepail (set -o pipefail) is not available in sh
 set -e
 
 LEVEL='ƒ' $LOGGER "Installing common utilities and dependencies..."

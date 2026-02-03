@@ -2,6 +2,7 @@
 	"MD033": {
 		"allowed_elements": ["ins"]
 	},
+	"MD036": false,
 	"MD013": {
 		"line_length": 120,
 		"code_blocks": false,

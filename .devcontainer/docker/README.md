@@ -23,6 +23,8 @@ _TODO_: Add complete details for each build target.
         │   ├── load-env.sh
         │   ├── publish.sh
         │   └── run.sh
+        ├── helpers/                  # Helper "scripts" with useful functions;
+        │                               meant to be sourced from other scripts
         ├── lib-scripts/              # Container installer scripts
         └── utils/                    # Container utility scripts
             ├── post-start.sh

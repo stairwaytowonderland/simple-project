@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 
-# * Create a non-root user and set up bashrc and profile for both the new user and root
-# * All variables are expected to be set via build args in the Dockerfile
+# * Description: Create a non-root user and set up bashrc and profile for both the new user and root
 
+# Only check for errors (set -e)
+# Don't check for unset variables (set -u) since variables are set in Dockerfile
+# Pipepail (set -o pipefail) is not available in sh
 set -e
 
 LEVEL='*' $LOGGER "Setting up bashrc and profile for new users and root ..."

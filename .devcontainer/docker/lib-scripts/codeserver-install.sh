@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 
-# https://coder.com/docs/code-server/install#debian-ubuntu
+# * Reference: https://coder.com/docs/code-server/install#debian-ubuntu
 
+# Only check for errors (set -e)
+# Don't check for unset variables (set -u) since variables are set in Dockerfile
+# Pipepail (set -o pipefail) is not available in sh
 set -e
 
 VERSION="${CODESERVER_VERSION:-latest}"

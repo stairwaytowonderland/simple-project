@@ -53,7 +53,7 @@ else
     RUN_CONTEXT="${RUN_CONTEXT:-"$script_dir/../../.."}"
 fi
 if [ ! -d "$RUN_CONTEXT" ]; then
-    echo "(!) Docker context directory not found at expected path: $RUN_CONTEXT" >&2
+    echo "(!) Docker context directory not found at expected path: ${RUN_CONTEXT}" >&2
     exit 1
 fi
 # Determine REMOTE_USER
@@ -81,18 +81,18 @@ else
     build_tag="${tag_prefix}-${BASE_IMAGE_VARIANT}"
     publish_tag="${tag_prefix}-${tag_suffix}"
 
-    build_id="$(docker images -q "${build_tag}")"
-    publish_id="$(docker images -q "${publish_tag}")"
+    build_id="$(docker images -q "$build_tag")"
+    publish_id="$(docker images -q "$publish_tag")"
     image_id="${build_id:-$publish_id}"
 
     echo "(*) Looking for Docker image id '${image_id}' ('${build_tag}' or '${publish_tag}') locally..." >&2
 
     if docker image inspect "$build_id" > /dev/null 2>&1; then
         echo "(*) Found Docker image '${build_tag}'" >&2
-        docker_tag="${build_tag}"
+        docker_tag="$build_tag"
     elif docker image inspect "$publish_id" > /dev/null 2>&1; then
         echo "(*) Found Docker image '${publish_tag}'" >&2
-        docker_tag="${publish_tag}"
+        docker_tag="$publish_tag"
     else
         echo "(!) Docker image not found locally. Please build the image first." >&2
         exit 1
@@ -130,11 +130,11 @@ if [ "$DOCKER_TARGET" = "builder" ]; then
     com+=("-v" "${RUN_CONTEXT}/.devcontainer/docker/lib-scripts:/tmp/lib-scripts:ro")
 else
     com+=("-v" "${RUN_CONTEXT}:${workspace_dir}")
-    if [ -d "$HOME/.ssh" ]; then
-        com+=("-v" "$HOME/.ssh:/home/${REMOTE_USER}/.ssh:ro")
+    if [ -d "${HOME}/.ssh" ]; then
+        com+=("-v" "${HOME}/.ssh:/home/${REMOTE_USER}/.ssh:ro")
     fi
-    if [ -r "$HOME/.gitconfig" ]; then
-        com+=("-v" "$HOME/.gitconfig:/etc/gitconfig:ro")
+    if [ -r "${HOME}/.gitconfig" ]; then
+        com+=("-v" "${HOME}/.gitconfig:/etc/gitconfig:ro")
     fi
     if echo "$DOCKER_TARGET" | grep -qE "^codeserver"; then
         com+=("-p" "${CODESERVER_HOST_IP}:${CODESERVER_HOST_PORT}:${CODESERVER_CONTAINER_PORT}")
@@ -149,7 +149,7 @@ for arg in "$@"; do
 done
 
 set -- "${com[@]}"
-. "$script_dir/exec-com.sh" "$@"
+. "${script_dir}/exec-com.sh" "$@"
 
 echo "(√) Done! Docker container exited." >&2
 # echo "_______________________________________" >&2

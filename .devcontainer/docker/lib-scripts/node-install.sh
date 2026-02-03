@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+# Only check for errors (set -e)
+# Don't check for unset variables (set -u) since variables are set in Dockerfile
+# Pipepail (set -o pipefail) is not available in sh
 set -e
 
 NODEPATH="${NODEPATH:-/usr/local/lib/node/nodejs}"

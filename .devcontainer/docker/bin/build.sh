@@ -59,6 +59,7 @@ fi
 BASE_IMAGE_NAME="${BASE_IMAGE_NAME:-ubuntu}"
 BASE_IMAGE_VARIANT="${BASE_IMAGE_VARIANT:-latest}"
 DEFAULT_PLATFORM="linux/$(uname -m)"
+FILEZ_TARGET="${FILEZ_TARGET:-filez}"
 
 # Determine Docker context
 if [ -d "$last_arg" ]; then
@@ -84,7 +85,7 @@ DOCKER_TARGET=${DOCKER_TARGET:-"base"}
 # Determine REMOTE_USER (the devcontainer non-root user, e.g., 'vscode' or 'devcontainer')
 REMOTE_USER="${REMOTE_USER:-$second_arg}"
 
-if [ "$DOCKER_TARGET" = "filez" ]; then
+if [ "$DOCKER_TARGET" = "$FILEZ_TARGET" ]; then
     build_tag="$DOCKER_TARGET"
 else
     tag_prefix="${IMAGE_NAME}:${DOCKER_TARGET}"
@@ -94,10 +95,10 @@ else
     build_tag="${tag_prefix}-${BASE_IMAGE_VARIANT}"
 fi
 
-dockerfile_path="$BUILD_CONTEXT/.devcontainer/docker/Dockerfile"
+dockerfile_path="${BUILD_CONTEXT}/.devcontainer/docker/Dockerfile"
 
 if [ ! -f "$dockerfile_path" ]; then
-    echo "(!) Dockerfile not found at expected path: $dockerfile_path" >&2
+    echo "(!) Dockerfile not found at expected path: ${dockerfile_path}" >&2
     exit 1
 fi
 
@@ -128,24 +129,24 @@ zoneinfo() {
         )
     tz="${TIMEZONE:-$DEFAULT_TIMEZONE}"
     echo "$tz"
-    echo "(∞) Timezone determined: $tz" >&2
+    echo "(∞) Timezone determined: ${tz}" >&2
     echo -e "\033[2m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\033[0m" >&2
 }
 
-echo "(*) Building Docker image for $DOCKER_TARGET..." >&2
-echo "(*) Dockerfile path: $dockerfile_path" >&2
-echo "(*) Docker context: $BUILD_CONTEXT" >&2
+echo "(*) Building Docker image for ${DOCKER_TARGET}..." >&2
+echo "(*) Dockerfile path: ${dockerfile_path}" >&2
+echo "(*) Docker context: ${BUILD_CONTEXT}" >&2
 com=(docker build)
-com+=("-f" "$dockerfile_path")
-com+=("--label" "org.opencontainers.image.ref.name=$build_tag")
-com+=("--target" "$DOCKER_TARGET")
-com+=("-t" "$build_tag")
+com+=("-f" "${dockerfile_path}")
+com+=("--label" "org.opencontainers.image.ref.name=${build_tag}")
+com+=("--target" "${DOCKER_TARGET}")
+com+=("-t" "${build_tag}")
 com+=("--platform=${PLATFORM:-$DEFAULT_PLATFORM}")
 # The `debian:bookworm-slim` image provides a minimal base for development containers
 com+=("--build-arg" "IMAGE_NAME=${BASE_IMAGE_NAME}")
 com+=("--build-arg" "VARIANT=${BASE_IMAGE_VARIANT}")
 if [ -n "$REMOTE_USER" ]; then
-    com+=("--build-arg" "USERNAME=$REMOTE_USER")
+    com+=("--build-arg" "USERNAME=${REMOTE_USER}")
 fi
 # com+=("--build-arg" "PYTHON_VERSION=${PYTHON_VERSION:-latest}")
 com+=("--build-arg" "TIMEZONE=$(zoneinfo)")
@@ -158,7 +159,7 @@ done
 com+=("$BUILD_CONTEXT")
 
 set -- "${com[@]}"
-. "$script_dir/exec-com.sh" "$@"
+. "${script_dir}/exec-com.sh" "$@"
 
 echo "(√) Done! Docker image build complete." >&2
 # echo "_______________________________________" >&2

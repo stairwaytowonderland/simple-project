@@ -30,7 +30,7 @@ else
     BUILD_CONTEXT="${BUILD_CONTEXT:-"$script_dir/../../.."}"
 fi
 if [ ! -d "$BUILD_CONTEXT" ]; then
-    echo "(!) Docker context directory not found at expected path: $BUILD_CONTEXT" >&2
+    echo "(!) Docker context directory not found at expected path: ${BUILD_CONTEXT}" >&2
     exit 1
 fi
 
@@ -71,7 +71,7 @@ TIME_MSG_LABEL= TIME_MSG_PREFIX= $BUILD_CONTEXT/$bin_dir/publish.sh $REPO_NAME:f
 TIME_MSG_LABEL= TIME_MSG_PREFIX= $BUILD_CONTEXT/$bin_dir/publish.sh $REPO_NAME $REPO_NAMESPACE
 EOF
 
-    "$script_dir/exec-com.sh" sh -c "$all_commands"
+    "${script_dir}/exec-com.sh" sh -c "$all_commands"
 }
 
 for arg in "$@"; do
