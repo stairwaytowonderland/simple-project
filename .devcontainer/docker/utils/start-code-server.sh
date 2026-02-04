@@ -1,8 +1,9 @@
 #!/bin/sh
 
-# If ever installing codeserver with Homebrew,
-# CODESERVER should be set to /home/linuxbrew/.linuxbrew/opt/code-server/bin/code-server
-CODESERVER="$(which code-server)"
+# * If ever installing codeserver with Homebrew,
+# * CODESERVER (the location of the `code-server` binary)
+# * should be set to /home/linuxbrew/.linuxbrew/opt/code-server/bin/code-server.
+CODESERVER="$(command -v code-server)"
 BIND_ADDR="${BIND_ADDR:-0.0.0.0:13337}"
 # CODESERVER_IP="${BIND_ADDR%%:*}"
 # CODESERVER_PORT="${BIND_ADDR##*:}"
@@ -21,7 +22,7 @@ if [ "${DEV:-$DEV}" = "true" ]; then
 else
     $LOGGER "Set DEV=true to disable authentication for code-server"
     auth="password"
-    export PASSWORD="${PASSWORD:-$($PASSGEN --simple "$DEFAULT_PASS_LENGTH" "$DEFAULT_PASS_CHARSET")}"
+    export PASSWORD="${PASSWORD:-$("$PASSGEN" --simple "$DEFAULT_PASS_LENGTH" "$DEFAULT_PASS_CHARSET")}"
 fi
 
 config_dir="$(dirname "$CODE_SERVER_CONFIG")"

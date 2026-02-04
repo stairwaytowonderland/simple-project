@@ -56,6 +56,84 @@ dedupe() {
     fi
 }
 
+waitprogress() {
+    local _waitfor="${1:-5}"
+    local progress_char="${2:-█}"
+    local background_char="${3:-░}"
+    local count=0
+    local progress=""
+    local background=""
+    local auto=true
+    local i blocks percent time_remaining
+
+    # Scale down for large wait times
+    local charcap=60
+    local multiplier=1
+    local waitfor="$_waitfor"
+    if [ "$_waitfor" -ge "$charcap" ]; then
+        multiplier=$((_waitfor / charcap))
+        _waitfor=$((_waitfor / multiplier))
+    fi
+
+    # Calculate characters per block
+    local numchars=$((charcap / _waitfor))
+    [ "$numchars" -ge 1 ] || numchars=1
+
+    # Initial prompt message
+    echo "(⏎) Press Enter to continue (proceeds automatically in ${waitfor} seconds)..." >&2
+    # Build full progress bar once
+    i=0
+    while [ "$i" -lt "$_waitfor" ]; do
+        j=0
+        while [ "$j" -lt "$numchars" ]; do
+            background="${background}${background_char}"
+            j=$((j + 1))
+        done
+        i=$((i + 1))
+    done
+
+    # Initial progress display
+    printf "\r  0%% \033[2m%s\033[0m" "$background" >&2
+    # Calculate width of background for later use
+    local bglength=${#background}
+    # Calculate width needed for time_remaining display
+    local time_width=${#waitfor}
+    # Show progress...
+    while [ "$count" -lt "$_waitfor" ]; do
+        if read -r -t "$multiplier" -n 1; then
+            auto=false
+            break
+        fi
+        count=$((count + 1))
+        j=0
+        while [ "$j" -lt "$numchars" ]; do
+            progress="${progress}${progress_char}"
+            j=$((j + 1))
+        done
+        percent=$((count * 100 / _waitfor))
+        # Calculate how many blocks to show in background
+        blocks=$((count * bglength / _waitfor))
+        remaining="${background:blocks}"
+        time_remaining=$((waitfor - (count * multiplier)))
+        # Update progress display
+        printf "\r%3d%% %s\033[2m%s\033[0m %${time_width}d" "$percent" "$progress" "$remaining" "$time_remaining" >&2
+    done
+
+    # Calculate the space needed to overwrite the progress bar line
+    local progress_space=$((bglength + count + time_width))
+    if $auto; then
+        # Additional wait to show completed progress bar
+        sleep 1
+        # Overwrite progress bar
+        printf "\r(…) %-${progress_space}s\n" "No input detected. Proceeding automatically..." >&2
+    else
+        # User pressed Enter...
+        # Move cursor up and overwrite progress bar
+        printf "\033[A\r(…) %-${progress_space}s\n" "Manual input detected. Proceeding..." >&2
+    fi
+    echo >&2
+}
+
 load_env() {
     # Declare script path variables in local scope since this is called from other scripts
     # ---------------------------------------

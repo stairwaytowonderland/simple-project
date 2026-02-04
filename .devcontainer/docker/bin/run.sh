@@ -27,11 +27,6 @@ last_arg="${*: -1}"
 
 # ---------------------------------------
 
-CODESERVER_BIND_ADDR="${CODESERVER_BIND_ADDR:-0.0.0.0:13337}"
-CODESERVER_CONTAINER_PORT="${CODESERVER_CONTAINER_PORT:-${CODESERVER_BIND_ADDR##*:}}"
-CODESERVER_HOST_PORT="${CODESERVER_HOST_PORT:-$CODESERVER_CONTAINER_PORT}"
-CODESERVER_HOST_IP="${CODESERVER_HOST_IP:-${CODESERVER_BIND_ADDR%%:*}}"
-
 BASE_IMAGE_NAME="${BASE_IMAGE_NAME:-ubuntu}"
 BASE_IMAGE_VARIANT="${BASE_IMAGE_VARIANT:-latest}"
 
@@ -104,20 +99,21 @@ workspace_dir="/home/${REMOTE_USER}/workspace"
 echo "(*) Running Docker container for ${REMOTE_USER}..." >&2
 com=(docker run -it --rm)
 # TZ not needed, but included for reference and clarity
-com+=("-e" "TZ=${TIMEZONE:-America/Chicago}")
+com_env=()
+com_env+=("-e" "TZ=${TIMEZONE:-America/Chicago}")
 if [ "${DEV:-false}" = "true" ]; then
-    com+=("-e" "DEV=true")
-    com+=("-e" "RESET_ROOT_PASS=${RESET_ROOT_PASS:-false}")
-    com+=("-e" "DEBUG=${DEBUG:-false}")
+    com_env+=("-e" "DEV=true")
+    com_env+=("-e" "RESET_ROOT_PASS=${RESET_ROOT_PASS:-false}")
+    com_env+=("-e" "DEBUG=${DEBUG:-false}")
 fi
 while [ $# -gt 0 ]; do
     case "$1" in
         -e)
-            com+=("-e" "$2")
+            com_env+=("-e" "$2")
             shift 2
             ;;
         --env=*)
-            com+=("$1")
+            com_env+=("$1")
             shift
             ;;
         *)
@@ -125,21 +121,52 @@ while [ $# -gt 0 ]; do
             ;;
     esac
 done
+com_vol=()
 if [ "$DOCKER_TARGET" = "builder" ]; then
-    com+=("-v" "${RUN_CONTEXT}/.devcontainer/docker/helpers:/helpers:ro")
-    com+=("-v" "${RUN_CONTEXT}/.devcontainer/docker/lib-scripts:/tmp/lib-scripts:ro")
+    com_vol+=("-v" "${RUN_CONTEXT}/.devcontainer/docker/helpers:/helpers:ro")
+    com_vol+=("-v" "${RUN_CONTEXT}/.devcontainer/docker/lib-scripts:/tmp/lib-scripts:ro")
 else
-    com+=("-v" "${RUN_CONTEXT}:${workspace_dir}")
+    com_vol+=("-v" "${RUN_CONTEXT}:${workspace_dir}")
     if [ -d "${HOME}/.ssh" ]; then
-        com+=("-v" "${HOME}/.ssh:/home/${REMOTE_USER}/.ssh:ro")
+        com_vol+=("-v" "${HOME}/.ssh:/home/${REMOTE_USER}/.ssh:ro")
     fi
     if [ -r "${HOME}/.gitconfig" ]; then
-        com+=("-v" "${HOME}/.gitconfig:/etc/gitconfig:ro")
+        com_vol+=("-v" "${HOME}/.gitconfig:/etc/gitconfig:ro")
     fi
     if echo "$DOCKER_TARGET" | grep -qE "^codeserver"; then
-        com+=("-p" "${CODESERVER_HOST_IP}:${CODESERVER_HOST_PORT}:${CODESERVER_CONTAINER_PORT}")
+        CODESERVER_BIND_ADDR=$(
+            CODESERVER_BIND_ADDR="${CODESERVER_BIND_ADDR:-0.0.0.0:13337}"
+            CODESERVER_CONTAINER_PORT="${CODESERVER_CONTAINER_PORT:-${CODESERVER_BIND_ADDR##*:}}"
+            CODESERVER_HOST_IP="${CODESERVER_HOST_IP:-${CODESERVER_BIND_ADDR%%:*}}"
+            printf "%s:%s" "${CODESERVER_HOST_IP}" "${CODESERVER_CONTAINER_PORT}"
+        )
+        CODESERVER_PORT_MAP=$(
+            CODESERVER_CONTAINER_PORT="${CODESERVER_BIND_ADDR##*:}"
+            CODESERVER_HOST_PORT="${CODESERVER_HOST_PORT:-$CODESERVER_CONTAINER_PORT}"
+            CODESERVER_HOST_IP="${CODESERVER_BIND_ADDR%%:*}"
+            if [ "$CODESERVER_CONTAINER_PORT" != "$CODESERVER_HOST_PORT" ]; then
+                echo "▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁" >&2
+                echo "Port mapping: Host ${CODESERVER_HOST_PORT} -> Container ${CODESERVER_CONTAINER_PORT}" >&2
+                echo "You can launch code-server at http://${CODESERVER_HOST_IP}:${CODESERVER_HOST_PORT}" >&2
+                echo "▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔" >&2
+            else
+                echo "▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁" >&2
+                echo "Port mapping: Host ${CODESERVER_HOST_IP}:${CODESERVER_HOST_PORT} -> Container ${CODESERVER_CONTAINER_PORT}" >&2
+                echo "You can launch code-server at http://${CODESERVER_HOST_IP}:${CODESERVER_CONTAINER_PORT}" >&2
+                echo "▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔" >&2
+            fi
+            printf "%s:%s:%s" "${CODESERVER_HOST_IP}" "${CODESERVER_HOST_PORT}" "${CODESERVER_CONTAINER_PORT}"
+        )
+        com_port+=("-p" "${CODESERVER_PORT_MAP}")
+        com_env+=("-e" "BIND_ADDR=${CODESERVER_BIND_ADDR}")
+
+        ! command -v waitprogress > /dev/null || waitprogress
     fi
 fi
+
+[ "${com_env+x}" != "x" ] || com+=("${com_env[@]}")
+[ "${com_vol+x}" != "x" ] || com+=("${com_vol[@]}")
+[ "${com_port+x}" != "x" ] || com+=("${com_port[@]}")
 com+=("$docker_tag")
 
 for arg in "$@"; do
