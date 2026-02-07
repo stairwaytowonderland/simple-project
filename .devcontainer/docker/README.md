@@ -131,19 +131,20 @@ graph TD
 
 **Legend:**
 
-| Element               | Meaning                                                                       |
-| --------------------- | ----------------------------------------------------------------------------- |
-| Solid lines (→)       | `FROM` relationships (inheritance)                                            |
-| Dashed lines (-.→)    | `COPY --from` relationships (resource copying)                                |
-| Diamond node          | Conditional choice based on build argument                                    |
-| **Circle**            | File generator stages                                                         |
-| **Green**             | Primary development containers                                                |
-| **Purple**            | Specialized development containers                                            |
-| **Light Blue**        | Temporary tool builder stages                                                 |
-| **Blue**              | Intermediate builder stages                                                   |
-| **$DEV_PARENT_IMAGE** | Build argument that determines whether base inherits from devuser or brewuser |
+| Element                                                                 | Meaning                                                                       |
+| ----------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| Solid lines (➞)                                                         | `FROM` relationships (inheritance)                                            |
+| Dashed lines (-.➝)                                                      | `COPY --from` relationships (resource copying)                                |
+| Diamond node                                                            | Conditional choice based on build argument                                    |
+| Circle                                                                  | File generator stages                                                         |
+| [_Moby_ Blue](https://www.docker.com/company/newsroom/media-resources/) | Source parent image                                                           |
+| **Green**                                                               | Primary development containers                                                |
+| **Purple**                                                              | Specialized development containers                                            |
+| **Light Blue**                                                          | Temporary tool builder stages                                                 |
+| **Medium Blue**                                                         | Intermediate builder stages                                                   |
+| **$DEV_PARENT_IMAGE**                                                   | Build argument that determines whether base inherits from devuser or brewuser |
 
-### 1. **utils** (FROM alpine)
+### 1. **`utils`** (`FROM alpine`)
 
 A lightweight Alpine-based stage for preprocessing utility scripts before copying to scratch.
 
@@ -165,7 +166,7 @@ stage.
 
 **Environment Variables**: None (generator stage only)
 
-### 2. **filez** (FROM scratch)
+### 2. **`filez`** (`FROM scratch`)
 
 A scratch-based stage for collecting and organizing core helper scripts that are copied into other stages.
 
@@ -186,7 +187,7 @@ A scratch-based stage for collecting and organizing core helper scripts that are
 
 **Environment Variables**: None (scratch-based stage)
 
-### 3. **builder** (FROM $BASE_IMAGE)
+### 3. **`builder`** (`FROM $BASE_IMAGE`)
 
 Minimal Debian-based image with essential build tools and dependencies.
 
@@ -218,7 +219,7 @@ Minimal Debian-based image with essential build tools and dependencies.
 - `DEFAULT_PASS_LENGTH` - Default password length (from build ARG)
 - `DEFAULT_PASS_CHARSET` - Default password character set (from build ARG)
 
-### 4. **brewbuilder** (FROM builder)
+### 4. **`brewbuilder`** (`FROM builder`)
 
 Installs Homebrew for Linux.
 
@@ -235,7 +236,7 @@ Installs Homebrew for Linux.
 - Installs Homebrew under `/home/linuxbrew/.linuxbrew`
 - Configures brew for the specified user
 
-### 5. **gobuilder** (FROM builder)
+### 5. **`gobuilder`** (`FROM builder`)
 
 Installs Go and Go-based tools.
 
@@ -251,7 +252,7 @@ Installs Go and Go-based tools.
 - Installs Go toolchain
 - Builds and installs `shfmt` (shell formatter)
 
-### 6. **nodebuilder** (FROM builder)
+### 6. **`nodebuilder`** (`FROM builder`)
 
 Installs Node.js and related tools.
 
@@ -272,7 +273,7 @@ Installs Node.js and related tools.
 - `NODEJS_HOME` - Node.js installation directory (`/usr/local/lib/nodejs`)
 - `PATH` - Updated to include `$NODEJS_HOME/bin`
 
-### 7. **devbuilder** (FROM builder)
+### 7. **`devbuilder`** (`FROM builder`)
 
 Extended builder with development tools and configuration.
 
@@ -295,7 +296,7 @@ Extended builder with development tools and configuration.
 - `PYTHON_VERSION` - Python version (exported from build ARG)
 - `DEV` - Development mode flag (exported from build ARG)
 
-### 8. **devuser** (FROM devbuilder)
+### 8. **`devuser`** (`FROM devbuilder`)
 
 Creates the non-root development user.
 
@@ -309,9 +310,9 @@ Creates the non-root development user.
 - Optionally sets default root password (development only)
 - Adds useful bash aliases system-wide
 
-### 9. **brewuser** (FROM devbuilder)
+### 9. **`brewuser`** (`FROM devbuilder`)
 
-Variant of devuser with Homebrew pre-installed.
+Variant of `devuser` with Homebrew pre-installed.
 
 **Purpose**: Development user with Homebrew available.
 
@@ -321,7 +322,7 @@ Variant of devuser with Homebrew pre-installed.
 - Copies Homebrew installation from brewbuilder stage
 - User has immediate access to brew commands
 
-### 10. **base** (FROM $DEV_PARENT_IMAGE)
+### 10. **`base`** (`FROM $DEV_PARENT_IMAGE`)
 
 The primary base target for development containers.
 
@@ -347,7 +348,7 @@ The primary base target for development containers.
 - `DEFAULT_WORKSPACE` - Default workspace path (from build ARG)
 - `RESET_ROOT_PASS` - Root password reset flag (default: `false`)
 
-### 11. **devtools** (FROM base)
+### 11. **`devtools`** (`FROM base`)
 
 Development container with Python, Node.js, and development tools.
 
@@ -372,7 +373,7 @@ Development container with Python, Node.js, and development tools.
 
 **Entrypoint**: `docker-entrypoint.sh` - Handles root password reset and displays fortune/cowsay
 
-### 12. **cloudtools** (FROM base)
+### 12. **`cloudtools`** (`FROM base`)
 
 Development container with cloud CLI tools.
 
@@ -385,7 +386,7 @@ Development container with cloud CLI tools.
 - Enables AWS CLI bash completion
 - Installs cfn-lint via pipx
 
-### 13. **codeserver-minimal** (FROM base)
+### 13. **`codeserver-minimal`** (`FROM base`)
 
 Minimal code-server container without development tools.
 
@@ -417,7 +418,7 @@ Minimal code-server container without development tools.
 
 **Entrypoint**: `tini` for proper signal handling
 
-### 14. **codeserver** (FROM devtools)
+### 14. **`codeserver`** (`FROM devtools`)
 
 Full-featured code-server with development tools.
 
@@ -430,7 +431,7 @@ Full-featured code-server with development tools.
 - Removes sudo access for security
 - Same configuration as codeserver-minimal
 
-### 15. **production** (FROM builder)
+### 15. **`production`** (`FROM builder`)
 
 Minimal production-ready container.
 
@@ -505,13 +506,17 @@ The Dockerfile accepts several build arguments for customization:
 | `DEBUG`                   | `false`                                                      | codeserver* | Debug mode for code-server             |
 
 > [!NOTE]
+> The asterisk (*) notation (e.g., `codeserver*`) indicates a wildcard. In this case that the build argument or
+> environment variable applies to both the `codeserver` and `codeserver-minimal` build targets.
+
+> [!NOTE]
 > As of Ubuntu 24+, a non-root `ubuntu` user (UID 1000) exists by default.
 > The Dockerfile automatically removes this user to avoid conflicts when creating a custom user.
 >
 > See the [official docs](https://code.visualstudio.com/remote/advancedcontainers/add-nonroot-user)
 > for more details on non-root users.
 
-## Library Scripts (lib-scripts/)
+## Library Scripts (`lib-scripts/`)
 
 Library scripts are installer and configuration scripts run during the Docker build process. They are copied to `/tmp/lib-scripts/`
 and executed in the Dockerfile RUN commands.
@@ -730,7 +735,7 @@ Installs Python and configures Python environment.
 - Installs Poetry and uv (modern Python package managers)
 - Optionally installs pre-commit via pipx
 
-## Utility Scripts (utils/)
+## Utility Scripts (`utils/`)
 
 Utility scripts are helper scripts available at runtime in the container. They are copied to `/usr/local/bin/` and can
 be invoked directly.

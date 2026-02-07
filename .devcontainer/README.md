@@ -25,21 +25,37 @@ for this project.
 ## Dev Container Configuration
 
 The [devcontainer.json](devcontainer.json) file configures VS Code's
-development container environment. Key aspects:
+development container environment.
 
-### Build Configuration
+## Basic Configuration
 
 ```jsonc
-"build": {
-  "dockerfile": "./docker/Dockerfile",
-  "target": "devtools",
-  "context": "..",
-  "args": {
-    "USERNAME": "vscode",
-    // Default values, here for reference
-    // "USER_UID": "1000",
-    // "USER_GID": "1000"
+{
+  "name": "Starter Project Dev Container",
+  "image": "ghcr.io/stairwaytowonderland/starter-project:latest"
+  // ...
+}
+```
+
+### Build Configuration (Optional)
+
+If using the `build` configuration, the `image` configuration must be disabled.
+
+```jsonc
+{
+  "name": "Starter Project Dev Container",
+  "build": {
+    "dockerfile": "./docker/Dockerfile",
+    "target": "devtools",
+    "context": "..",
+    "args": {
+      "USERNAME": "vscode",
+      // Default values, here for reference
+      // "USER_UID": "1000",
+      // "USER_GID": "1000"
+    }
   }
+  // ...
 }
 ```
 
@@ -50,18 +66,44 @@ development container environment. Key aspects:
 
 ### Workspace Configuration
 
+> [!NOTE]
+> See the [Dev Container official pre-defined variable reference](https://containers.dev/implementors/json_reference/#variables-in-devcontainerjson)
+> for more details.
+
 ```jsonc
 {
+  // ...
  "remoteUser": "vscode",
- "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
- "workspaceMount": "source=${localWorkspaceFolder},target=/workspaces/${localWorkspaceFolderBasename},type=bind,consistency=cached"
+ "workspaceMount": "source=${localWorkspaceFolder},target=${containerWorkspaceFolder},type=bind,consistency=cached"
+ // ...
 }
 ```
 
-- **remoteUser**: `vscode` - Non-root user for development (matches USERNAME build arg)
-- **workspaceFolder**: `/workspaces/${localWorkspaceFolderBasename}` - Container path where workspace is mounted
-  (default workspace directory)
-- **workspaceMount**: Bind mount configuration with cached consistency for performance
+#### Properties
+
+- **remoteUser**: `vscode` - User that devcontainer supporting services/tools run as in the container
+  (terminals, tasks, debugging). Does not change the container's main user (set via `containerUser`). Defaults to the
+  container's running user (often `root`)
+- **containerUser** (not shown): User for all operations run inside the container. Defaults to `root` or the last `USER`
+  instruction in the Dockerfile. If you want connected tools to use a different user, use `remoteUser`
+- **workspaceMount**: Overrides the default local mount point for the workspace. Supports [Docker CLI `--mount` flag](https://docs.docker.com/engine/reference/commandline/run/#mount)
+  syntax with environment and pre-defined variables. **Requires `workspaceFolder` to be set**.
+- **workspaceFolder** (not shown; set by default): Sets the default path that devcontainer tools should open when
+  connecting to the container.
+  Defaults to the automatic source code mount location. (if not set, defaults to the `WORKDIR` specified in the Dockerfile).
+  Currently both are set to `/home/{remoteUser}/workspace`. **Requires `workspaceMount` to be set**.
+
+  > [!NOTE]
+  > `${remoteUser}` is write-only; `{remoteUser}` in the example above is just a placeholder.
+
+#### Pre-defined Variables
+
+These variables are available for use in `devcontainer.json`:
+
+- **${localWorkspaceFolder}**: Path of the local folder opened in VS Code (contains `.devcontainer/devcontainer.json`)
+- **${containerWorkspaceFolder}**: Path where the workspace files can be found in the container
+- **${localWorkspaceFolderBasename}**: Name of the local folder opened in VS Code
+- **${containerWorkspaceFolderBasename}**: Name of the folder where workspace files are located in the container
 
 ### SSH Keys
 
@@ -69,7 +111,9 @@ Local ssh keys will be mounted, to allow seamless integration with remote server
 
 ```jsonc
 {
+  // ...
  "mounts": ["source=${localEnv:HOME}/.ssh,target=/home/vscode/.ssh,type=bind,consistency=cached"]
+ // ...
 }
 ```
 
