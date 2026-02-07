@@ -50,7 +50,6 @@ EOF
 
 echo | tee -a /etc/skel/.bashrc /root/.bashrc > /dev/null \
     && echo PATH="\"\$($FIXPATH)\"" | tee -a /etc/skel/.bashrc /root/.bashrc > /dev/null \
-    && echo LOGGER="\"$LOGGER\"" | tee -a /etc/skel/.bashrc /root/.bashrc > /dev/null \
     && cat << EOF | tee -a /etc/skel/.profile /root/.profile > /dev/null
 
 # https://docs.brew.sh/Shell-Completion

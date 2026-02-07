@@ -5,8 +5,23 @@ ARG BASE_IMAGE=${IMAGE_NAME}:${VARIANT}
 ARG DEV_PARENT_IMAGE=devuser
 
 # --------------------------------------------------------------
-# Generator stage for core helper scripts
+# Generator stages for core utility scripts
 # --------------------------------------------------------------
+FROM alpine AS utils
+
+ARG LOGGER=/usr/local/bin/logger.sh \
+    PASSGEN=/usr/local/bin/passgen.sh \
+    DEFAULT_PASS_CHARSET='[:graph:]' \
+    DEFAULT_PASS_LENGTH=32
+
+COPY --chmod=755 .devcontainer/docker/utils/logger.sh $LOGGER
+COPY --chmod=755 .devcontainer/docker/utils/passgen.sh $PASSGEN
+
+RUN sed -i "s|\$PASSGEN|$PASSGEN|g" $PASSGEN \
+  && sed -i "s|\$DEFAULT_PASS_LENGTH|$DEFAULT_PASS_LENGTH|g" $PASSGEN \
+  && sed -i "s|\$DEFAULT_PASS_CHARSET|$DEFAULT_PASS_CHARSET|g" $PASSGEN
+
+
 FROM scratch AS filez
 
 ARG LOGGER=/usr/local/bin/logger.sh \
@@ -14,12 +29,8 @@ ARG LOGGER=/usr/local/bin/logger.sh \
     DEFAULT_PASS_CHARSET='[:graph:]' \
     DEFAULT_PASS_LENGTH=32
 
-ENV PASSGEN=$PASSGEN \
-    CODESERVER_PASS_LENGTH=$DEFAULT_PASS_LENGTH \
-    CODESERVER_PASS_CHARSET=$DEFAULT_PASS_CHARSET
-
-COPY --chmod=755 .devcontainer/docker/utils/logger.sh $LOGGER
-COPY --chmod=755 .devcontainer/docker/utils/passgen.sh $PASSGEN
+COPY --from=utils $LOGGER $LOGGER
+COPY --from=utils $PASSGEN $PASSGEN
 
 COPY .devcontainer/docker/helpers/*.sh /helpers/
 
@@ -43,7 +54,8 @@ ARG LOGGER=/usr/local/bin/logger.sh \
 
 # Timezone and locale settings
 # ? localedef -i en_US -f UTF-8 en_US.UTF-8
-ENV TZ=$TIMEZONE \
+ENV LOGGER=$LOGGER \
+    TZ=$TIMEZONE \
     LANG=C.UTF-8 \
     LC_ALL=C.UTF-8 \
     # Set environment variables to non-interactive (this prevents some prompts)
@@ -149,8 +161,6 @@ RUN /tmp/lib-scripts/go-install.sh \
   && rm -rf /var/lib/apt/lists/*
 
 CMD ["/bin/bash"]
-
-# --------------------------------------------------------------
 
 
 FROM builder AS nodebuilder

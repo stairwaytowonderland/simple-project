@@ -19,11 +19,12 @@ set -e
 # Output:
 #   Randomly generated password
 
-_DEFAULT_PASS_LENGTH="${DEFAULT_PASS_LENGTH:-32}"
-_DEFAULT_PASS_CHARSET="${DEFAULT_PASS_CHARSET:-[:graph:]}"
+# Redundant checker for default values to ensure they are set even if not passed as build args
+DEFAULT_PASS_LENGTH="${DEFAULT_PASS_LENGTH:-32}"
+DEFAULT_PASS_CHARSET="${DEFAULT_PASS_CHARSET:-[:graph:]}"
 
-DEFAULT_PASS_LENGTH="${DEFAULT_PASS_LENGTH:-$_DEFAULT_PASS_LENGTH}"
-DEFAULT_PASS_CHARSET="${DEFAULT_PASS_CHARSET:-$_DEFAULT_PASS_CHARSET}"
+DEFAULT_PASS_LENGTH="${DEFAULT_PASS_LENGTH:-$DEFAULT_PASS_LENGTH}"
+DEFAULT_PASS_CHARSET="${DEFAULT_PASS_CHARSET:-$DEFAULT_PASS_CHARSET}"
 DEFAULT_MAX_QTY="${DEFAULT_MAX_QTY:-10000}"
 DEFAULT_MIN_CHAR_PER_FAM="${DEFAULT_MIN_CHAR_PER_FAM:-2}"
 
@@ -88,7 +89,7 @@ usage() {
     cat << EOT >&2
 Usage: $PASSGEN [-quantity] [mode] [options] [positional_args]
 Arguments:
-  quantity: Number of passwords to generate (default: 1; max: 99)
+  quantity: Number of passwords to generate (default: 1; max: $DEFAULT_MAX_QTY)
   mode: '-s|--simple' for simple password generation (default)
         '-r|--requirements' for password generation with character family requirements
           !! Pre-requisites:
