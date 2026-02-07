@@ -32,7 +32,7 @@ development container environment. Key aspects:
 ```jsonc
 "build": {
   "dockerfile": "./docker/Dockerfile",
-  "target": "devcontainer",
+  "target": "devtools",
   "context": "..",
   "args": {
     "USERNAME": "vscode",
@@ -44,22 +44,23 @@ development container environment. Key aspects:
 ```
 
 - **dockerfile**: Path to the Dockerfile relative to `.devcontainer/`
-- **target**: Multi-stage build target to use (see Dockerfile section below)
+- **target**: Multi-stage build target to use (common: `base`, `devtools`, `cloudtools`)
 - **context**: Docker build context (parent directory to access workspace files)
-- **args**: Build arguments passed to Docker (see Dockerfile Build Arguments section)
+- **args**: Build arguments passed to Docker (see [docker/README.md](./docker/README.md) for full list)
 
 ### Workspace Configuration
 
 ```jsonc
 {
  "remoteUser": "vscode",
- "workspaceFolder": "/home/<remoteUser>/workspace",
- "workspaceMount": "source=${localWorkspaceFolder},target=/home/vscode/workspace,type=bind,consistency=cached"
+ "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
+ "workspaceMount": "source=${localWorkspaceFolder},target=/workspaces/${localWorkspaceFolderBasename},type=bind,consistency=cached"
 }
 ```
 
 - **remoteUser**: `vscode` - Non-root user for development (matches USERNAME build arg)
-- **workspaceFolder**: `/home/<remoteUser>/workspace` - Container path where workspace is mounted
+- **workspaceFolder**: `/workspaces/${localWorkspaceFolderBasename}` - Container path where workspace is mounted
+  (default workspace directory)
 - **workspaceMount**: Bind mount configuration with cached consistency for performance
 
 ### SSH Keys
@@ -88,10 +89,15 @@ The configuration installs development tools via [devcontainers features](https:
 
 The [Dockerfile](docker/Dockerfile) uses a multi-stage approach to build several targets.
 
-The targets relevant to the _Dev Container_ are **`base`** and **`devcontainer`**:
+The primary targets for development containers are:
 
-1. **base** - Minimal Debian-based image with essential packages (build tools, git, sudo, etc.)
-1. **devcontainer** - Extends base with a non-root user, Homebrew, and development tools
+1. **base** - Foundation development environment with essential tools and configuration
+2. **devtools** - Full-featured environment with Python, Node.js, and development tools
+3. **cloudtools** - Environment with AWS CLI, Terraform, and cloud infrastructure tools
+4. **codeserver** - Web-based VS Code instance with development tools
+5. **production** - Minimal production-ready container
+
+Most users will use the **base** or **devtools** target for VS Code Dev Containers.
 
 ## CLI Tool
 

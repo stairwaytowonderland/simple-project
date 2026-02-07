@@ -1,8 +1,6 @@
 # Dockerfile
 
-A detailed guide to the Dockerfile.
-
-_TODO_: Add complete details for each build target.
+A detailed guide to the multi-stage Dockerfile, build targets, library scripts, and utility scripts.
 
 ## Folder Structure
 
@@ -47,12 +45,12 @@ _TODO_: Add complete details for each build target.
     ```
 
 1. Now update the `.env` that was just created with the relevant information.
-    - **GITHUB_REPO**: Should be the name of your repository
+    - **REPO_NAME**: Should be the name of your repository
         (e.g. if the url is <https://github.com/octocat/Hello-World>,
-        `GITHUB_REPO` would be _'Hello-World'_).
-    - **GITHUB_NAMESPACE**: Should be namespace owner of the repo
+        `REPO_NAME` would be _'Hello-World'_).
+    - **REPO_NAMESPACE**: Should be namespace owner of the repo
         (e.g. if the url is <https://github.com/octocat/Hello-World>,
-        `GITHUB_NAMEPSACE` would be _'octocat'_)
+        `REPO_NAMESPACE` would be _'octocat'_)
     - **GITHUB_TOKEN**: The access token used to [publish](#publishsh)
         your image to the Github package registry.
 
@@ -67,34 +65,881 @@ _TODO_: Add complete details for each build target.
 
 ## Build Targets
 
-1. **base** - Minimal Debian-based image with essential packages
-    (build tools, git, sudo, etc.)
-1. **devcontainer** - Extends base with a non-root user, Homebrew,
-    and development tools
-1. **codeserver** - A [Coder (code-server)](https://coder.com/docs/code-server)
-    instance (_experimental_)
-1. **production** - Minimal production image based on base
-    (includes tini for proper signal handling)
+The Dockerfile implements a multi-stage build with several specialized targets:
+
+```mermaid
+graph TD
+    scratch(("scratch"))
+    alpine{{"alpine"}}
+    parent{{"$BASE_IMAGE<br/>(ubuntu:latest)"}}
+
+    filez -.->|copies scripts| builder
+    filez -.->|copies scripts| devbuilder
+    filez -.->|copies scripts| codeserver-minimal
+
+    alpine --> utils((("(1) utils")))
+    utils -.->|copies scripts| filez((("(2) filez")))
+    scratch ---> filez
+    parent ----> builder["(3) builder"]
+
+    builder --> brewbuilder(["(4) brewbuilder"])
+    builder --> gobuilder(["(5) gobuilder"])
+    builder --> nodebuilder(["(6) nodebuilder"])
+    builder --> devbuilder["(7) devbuilder"]
+    builder --> production("(15) production")
+
+    devbuilder --> devuser["(8) devuser"]
+    devbuilder --> brewuser["(9) brewuser"]
+
+    brewbuilder -.->|copies brew| brewuser
+    gobuilder -.->|copies shfmt| base
+    nodebuilder -.->|copies node| devtools
+
+    devuser --> dev_parent{"$DEV_PARENT_IMAGE<br/>(build ARG)"}
+    brewuser --> dev_parent
+    dev_parent --> base("(10) base")
+
+    base --> devtools("(11) devtools")
+    base --> cloudtools("(12) cloudtools")
+    base --> codeserver-minimal("(13) codeserver-minimal")
+
+    devtools --> codeserver("(14) codeserver")
+
+    style utils fill:#e1f5ff
+    style filez fill:#e1f5ff
+    style builder fill:#ffd3b6,stroke:#ffa56a,color:#000
+    style production fill:#800080,stroke:#4d004d,color:#fff
+
+    classDef padding padding:100px
+    classDef small font-size:10px
+    classDef parent fill:#1d63ed,stroke:#bcbcbc,color:#fff
+    classDef primary fill:#008000,stroke:#004000,color:#fff
+    classDef secondary fill:#4caf50,stroke:#2e7d32,color:#fff
+    classDef tertiary fill:#674ea7,stroke:#473673,color:#fff
+    classDef utility fill:#90caf9,stroke:#1976d2,color:#000
+    classDef builder fill:#0b5394,stroke:#0b5394,color:#fff
+
+    class alpine,parent parent
+    class base padding
+    class base,devtools,cloudtools primary
+    class devtools,cloudtools secondary
+    class codeserver,codeserver-minimal tertiary
+    class utils,filez,gobuilder,nodebuilder,brewbuilder utility
+    class builder,devbuilder,devuser,brewuser builder
+    class dev_parent small
+```
+
+**Legend:**
+
+| Element               | Meaning                                                                       |
+| --------------------- | ----------------------------------------------------------------------------- |
+| Solid lines (→)       | `FROM` relationships (inheritance)                                            |
+| Dashed lines (-.→)    | `COPY --from` relationships (resource copying)                                |
+| Diamond node          | Conditional choice based on build argument                                    |
+| **Circle**            | File generator stages                                                         |
+| **Green**             | Primary development containers                                                |
+| **Purple**            | Specialized development containers                                            |
+| **Light Blue**        | Temporary tool builder stages                                                 |
+| **Blue**              | Intermediate builder stages                                                   |
+| **$DEV_PARENT_IMAGE** | Build argument that determines whether base inherits from devuser or brewuser |
+
+### 1. **utils** (FROM alpine)
+
+A lightweight Alpine-based stage for preprocessing utility scripts before copying to scratch.
+
+**Purpose**: Process and prepare utility scripts (logger.sh, passgen.sh) with sed replacements before collecting in filez
+stage.
+
+**Build Arguments**:
+
+- `LOGGER` (default: `/usr/local/bin/logger.sh`) - Path to logger script
+- `PASSGEN` (default: `/usr/local/bin/passgen.sh`) - Path to password generation script
+- `DEFAULT_PASS_LENGTH` (default: `32`) - Default password length
+- `DEFAULT_PASS_CHARSET` (default: `[:graph:]`) - Default password character set
+
+**Key Features**:
+
+- Copies logger.sh and passgen.sh from source
+- Performs sed substitutions to inject build argument values into scripts
+- Provides processed scripts to filez stage
+
+**Environment Variables**: None (generator stage only)
+
+### 2. **filez** (FROM scratch)
+
+A scratch-based stage for collecting and organizing core helper scripts that are copied into other stages.
+
+**Purpose**: Centralize script collection to avoid duplication across stages.
+
+**Contents**:
+
+- `logger.sh` - Logging utility
+- `passgen.sh` - Password generation utility
+- Helper scripts from `helpers/` directory
+
+**Build Arguments**:
+
+- `LOGGER` (default: `/usr/local/bin/logger.sh`) - Path to logger script
+- `PASSGEN` (default: `/usr/local/bin/passgen.sh`) - Path to password generation script
+- `DEFAULT_PASS_LENGTH` (default: `32`) - Default password length
+- `DEFAULT_PASS_CHARSET` (default: `[:graph:]`) - Default password character set
+
+**Environment Variables**: None (scratch-based stage)
+
+### 3. **builder** (FROM $BASE_IMAGE)
+
+Minimal Debian-based image with essential build tools and dependencies.
+
+**Purpose**: Foundation for all other build targets.
+
+**Key Features**:
+
+- Installs common utilities (curl, vim, git, jq, yq, python3)
+- Configures timezone and locale
+- Removes default `ubuntu` user (Ubuntu 24+) to avoid UID conflicts
+- Sets up password generation tools
+
+**Build Arguments**:
+
+- `IMAGE_NAME` (default: `ubuntu`) - Base image name
+- `VARIANT` (default: `latest`) - Base image tag/version
+- `TIMEZONE` (default: `UTC`) - Container timezone
+- `LOGGER` (default: `/usr/local/bin/logger.sh`) - Path to logger script
+- `PASSGEN` (default: `/usr/local/bin/passgen.sh`) - Path to password generation script
+- `DEFAULT_PASS_LENGTH` (default: `32`) - Default password length
+- `DEFAULT_PASS_CHARSET` (default: `[:graph:]`) - Default password character set
+
+**Environment Variables**:
+
+- `TZ` - Timezone (from build ARG)
+- `LANG`, `LC_ALL` - Locale settings (C.UTF-8)
+- `DEBIAN_FRONTEND` - Set to noninteractive
+- `PASSGEN` - Path to password generation script (from build ARG)
+- `DEFAULT_PASS_LENGTH` - Default password length (from build ARG)
+- `DEFAULT_PASS_CHARSET` - Default password character set (from build ARG)
+
+### 4. **brewbuilder** (FROM builder)
+
+Installs Homebrew for Linux.
+
+**Purpose**: Provide Homebrew for package management in development environments.
+
+**Build Arguments**:
+
+- `USERNAME` (default: `vscode`) - Non-root user name
+- `USER_UID` (default: `1000`) - User ID
+- `USER_GID` (default: `$USER_UID`) - Group ID
+
+**Key Features**:
+
+- Installs Homebrew under `/home/linuxbrew/.linuxbrew`
+- Configures brew for the specified user
+
+### 5. **gobuilder** (FROM builder)
+
+Installs Go and Go-based tools.
+
+**Purpose**: Build Go tools like shfmt for use in other stages.
+
+**Build Arguments**:
+
+- `USERNAME`, `USER_UID`, `USER_GID` - User configuration
+- `GO_VERSION` (default: `latest`) - Go version to install
+
+**Key Features**:
+
+- Installs Go toolchain
+- Builds and installs `shfmt` (shell formatter)
+
+### 6. **nodebuilder** (FROM builder)
+
+Installs Node.js and related tools.
+
+**Purpose**: Provide Node.js runtime for development environments.
+
+**Build Arguments**:
+
+- `USERNAME`, `USER_UID`, `USER_GID` - User configuration
+- `NODE_VERSION` (default: `lts`) - Node.js version
+
+**Key Features**:
+
+- Installs Node.js in `/usr/local/lib/node/nodejs`
+- Includes npm and npx
+
+**Environment Variables**:
+
+- `NODEJS_HOME` - Node.js installation directory (`/usr/local/lib/nodejs`)
+- `PATH` - Updated to include `$NODEJS_HOME/bin`
+
+### 7. **devbuilder** (FROM builder)
+
+Extended builder with development tools and configuration.
+
+**Purpose**: Intermediate stage for development containers with Git, AWS CLI, and Terraform.
+
+**Build Arguments**:
+
+- `USERNAME` (default: `vscode`), `USER_UID` (default: `1000`), `USER_GID` (default: `$USER_UID`) - User configuration
+- `BREW` (default: `/home/linuxbrew/.linuxbrew/bin/brew`) - Path to Homebrew binary
+- `FIXPATH` (default: `/usr/local/bin/fixpath.sh`) - Installation path for PATH fixing utility
+- `DEV` (default: `false`) - Development mode flag
+- `GIT_VERSION` (default: `latest`) - Git version (`latest`, `system`, or specific version)
+- `PYTHON_VERSION` (default: `latest`) - Python version to install
+- `PRE_COMMIT_ENABLED` (default: `false`) - Enable pre-commit hooks
+- `DEFAULT_ROOT_PASS` (default: `$DEV`) - Set default root password
+
+**Environment Variables**:
+
+- `PATH` - Updated to include `/home/$USERNAME/.local/bin`
+- `PYTHON_VERSION` - Python version (exported from build ARG)
+- `DEV` - Development mode flag (exported from build ARG)
+
+### 8. **devuser** (FROM devbuilder)
+
+Creates the non-root development user.
+
+**Purpose**: Set up non-root user with sudo access and proper permissions.
+
+**Key Features**:
+
+- Creates user with specified UID/GID
+- Grants passwordless sudo access
+- Sets up SSH directory with proper permissions
+- Optionally sets default root password (development only)
+- Adds useful bash aliases system-wide
+
+### 9. **brewuser** (FROM devbuilder)
+
+Variant of devuser with Homebrew pre-installed.
+
+**Purpose**: Development user with Homebrew available.
+
+**Key Features**:
+
+- Inherits from devbuilder
+- Copies Homebrew installation from brewbuilder stage
+- User has immediate access to brew commands
+
+### 10. **base** (FROM $DEV_PARENT_IMAGE)
+
+The primary base target for development containers.
+
+**Purpose**: Complete development environment ready for use.
+
+**Build Arguments**:
+
+- `DEV_PARENT_IMAGE` (default: `devuser`) - Parent image (devuser or brewuser)
+- `PIPX` (default: `/usr/local/bin/pipxpath.sh`) - Installation path for pipx wrapper script
+- `PRE_COMMIT_ENABLED` (default: `false`) - Whether to install pre-commit
+- `DEFAULT_WORKSPACE` (default: `/home/$USERNAME/workspace`) - Default workspace directory
+
+**Key Features**:
+
+- Copies shfmt from gobuilder
+- Installs base utilities (openssh-client, optionally pre-commit)
+- Sets up default workspace directory
+- Configures proper PATH with fixpath.sh utility
+
+**Environment Variables**:
+
+- `LOGGER` - Path to logger script (from build ARG)
+- `DEFAULT_WORKSPACE` - Default workspace path (from build ARG)
+- `RESET_ROOT_PASS` - Root password reset flag (default: `false`)
+
+### 11. **devtools** (FROM base)
+
+Development container with Python, Node.js, and development tools.
+
+**Purpose**: Full-featured development environment for Python and Node.js projects.
+
+**Build Arguments**:
+
+- `NO_BREW_UPDATE` (default: `$DEV`) - Skip brew update if true
+
+**Key Features**:
+
+- Installs Python via Homebrew (if `PYTHON_VERSION` specified)
+- Installs pipx, Poetry, and uv (Python package managers)
+- Installs Node.js from nodebuilder stage
+- Optionally installs pre-commit via pipx
+- Includes docker-entrypoint.sh for container initialization
+
+**Environment Variables**:
+
+- `NODEJS_HOME` - Node.js installation path
+- `RESET_ROOT_PASS` - Control root password reset at startup
+
+**Entrypoint**: `docker-entrypoint.sh` - Handles root password reset and displays fortune/cowsay
+
+### 12. **cloudtools** (FROM base)
+
+Development container with cloud CLI tools.
+
+**Purpose**: Container optimized for cloud infrastructure work.
+
+**Key Features**:
+
+- Installs AWS CLI v2
+- Installs Terraform
+- Enables AWS CLI bash completion
+- Installs cfn-lint via pipx
+
+### 13. **codeserver-minimal** (FROM base)
+
+Minimal code-server container without development tools.
+
+**Purpose**: Lightweight web-based VS Code instance.
+
+**Build Arguments**:
+
+- `BIND_ADDR` (default: `0.0.0.0:13337`) - code-server bind address
+- `DOWNLOAD_STANDALONE` (default: `true`) - Install as standalone tar.gz
+
+**Key Features**:
+
+- Installs code-server (Coder's VS Code in browser)
+- Removes sudo access for security
+- Includes healthcheck endpoint
+- Configured with tini for proper signal handling
+
+**Environment Variables**:
+
+- `BIND_ADDR` - Bind address for code-server
+- `CODE_SERVER_WORKSPACE` - Workspace directory
+- `CODE_SERVER_CONFIG` - Config file path
+- `CODE_SERVER_EXTENSIONS` - Extensions JSON path
+- `DEBUG` - Debug mode flag
+
+**Exposed Ports**: Port from `BIND_ADDR` (default: 13337)
+
+**Healthcheck**: Checks `/healthz` endpoint every 30s
+
+**Entrypoint**: `tini` for proper signal handling
+
+### 14. **codeserver** (FROM devtools)
+
+Full-featured code-server with development tools.
+
+**Purpose**: Web-based VS Code with Python, Node.js, and development tools pre-installed.
+
+**Key Features**:
+
+- All features from devtools target
+- code-server installation
+- Removes sudo access for security
+- Same configuration as codeserver-minimal
+
+### 15. **production** (FROM builder)
+
+Minimal production-ready container.
+
+**Purpose**: Lightweight container for production deployments.
+
+**Key Features**:
+
+- Based on minimal builder stage
+- Includes tini for signal handling
+- No development tools
+- No non-root user configured
+
+**Entrypoint**: `tini`
 
 ## Build Arguments
 
-The Dockerfile accepts several build arguments that can be customized:
+The Dockerfile accepts several build arguments for customization:
 
-| Argument     | Default         | Target     | Description                            |
-| ------------ | --------------- | ---------- | -------------------------------------- |
-| `IMAGE_NAME` | `ubuntu`        | base       | Base image name (must be Debian-based) |
-| `VARIANT`    | `latest`        | base       | Base image tag/version                 |
-| `USERNAME`   | `devcontainer`  | base       | Non-root user name to create           |
-| `USER_UID`   | `1000`          | base       | User ID for the non-root user          |
-| `USER_GID`   | `$USER_UID`     | base       | Group ID for the non-root user         |
-| `BIND_ADDR`  | `0.0.0.0:13337` | codeserver | Group ID for the non-root user         |
+### Global Arguments (Available in Multiple Targets)
+
+| Argument           | Default     | Used In                                         | Description                                        |
+| ------------------ | ----------- | ----------------------------------------------- | -------------------------------------------------- |
+| `IMAGE_NAME`       | `ubuntu`    | builder                                         | Base image name (must be Debian-based)             |
+| `VARIANT`          | `latest`    | builder                                         | Base image tag/version                             |
+| `BASE_IMAGE`       | Computed    | builder                                         | Full base image reference (`$IMAGE_NAME:$VARIANT`) |
+| `DEV_PARENT_IMAGE` | `devuser`   | base                                            | Parent target (devuser or brewuser)                |
+| `USERNAME`         | `vscode`    | brewbuilder, gobuilder, nodebuilder, devbuilder | Non-root user name                                 |
+| `USER_UID`         | `1000`      | brewbuilder, gobuilder, nodebuilder, devbuilder | User ID for non-root user                          |
+| `USER_GID`         | `$USER_UID` | brewbuilder, gobuilder, nodebuilder, devbuilder | Group ID for non-root user                         |
+
+### Target-Specific Arguments
+
+| Argument               | Default                      | Target         | Description                                                 |
+| ---------------------- | ---------------------------- | -------------- | ----------------------------------------------------------- |
+| `LOGGER`               | `/usr/local/bin/logger.sh`   | filez, builder | Path to logger script                                       |
+| `PASSGEN`              | `/usr/local/bin/passgen.sh`  | filez, builder | Path to password generator script                           |
+| `DEFAULT_PASS_CHARSET` | `[:graph:]`                  | filez, builder | Default character set for password generation               |
+| `DEFAULT_PASS_LENGTH`  | `32`                         | filez, builder | Default password length                                     |
+| `TIMEZONE`             | `UTC`                        | builder        | Container timezone                                          |
+| `GO_VERSION`           | `latest`                     | gobuilder      | Go version to install                                       |
+| `NODE_VERSION`         | `lts`                        | nodebuilder    | Node.js version (lts, latest, or specific)                  |
+| `DEV`                  | `false`                      | devbuilder     | Development mode flag                                       |
+| `GIT_VERSION`          | `system`                     | devbuilder     | Git version (system, latest, or specific)                   |
+| `PYTHON_VERSION`       | `devcontainer`               | devbuilder     | Python version (devcontainer, system, latest, or specific)  |
+| `PRE_COMMIT_ENABLED`   | `false`                      | devbuilder     | Install pre-commit hooks                                    |
+| `DEFAULT_ROOT_PASS`    | `false`                      | devbuilder     | Set default root password (dev only)                        |
+| `FIXPATH`              | `/usr/local/bin/fixpath.sh`  | devbuilder     | Installation path for PATH fixing utility (build-time only) |
+| `PIPX`                 | `/usr/local/bin/pipxpath.sh` | devbuilder     | Installation path for pipx wrapper script (build-time only) |
+| `BIND_ADDR`            | `0.0.0.0:13337`              | codeserver*    | code-server bind address                                    |
+| `DOWNLOAD_STANDALONE`  | `true`                       | codeserver*    | Install code-server as standalone tar.gz                    |
+| `NO_BREW_UPDATE`       | `$DEV`                       | devtools       | Skip Homebrew update during build                           |
+
+### Environment Variables Set in Dockerfile
+
+| Variable                  | Value                                                        | Target      | Description                            |
+| ------------------------- | ------------------------------------------------------------ | ----------- | -------------------------------------- |
+| `PASSGEN`                 | Build arg value                                              | filez       | Password generator script path         |
+| `CODESERVER_PASS_LENGTH`  | `$DEFAULT_PASS_LENGTH`                                       | filez       | code-server password length            |
+| `CODESERVER_PASS_CHARSET` | `$DEFAULT_PASS_CHARSET`                                      | filez       | code-server password character set     |
+| `TZ`                      | `$TIMEZONE`                                                  | builder     | Timezone                               |
+| `LANG`, `LC_ALL`          | `C.UTF-8`                                                    | builder     | Locale settings                        |
+| `DEBIAN_FRONTEND`         | `noninteractive`                                             | builder     | Prevent interactive prompts            |
+| `BREW`                    | `/home/linuxbrew/.linuxbrew/bin/brew`                        | devbuilder  | Homebrew binary path                   |
+| `DEV`                     | Build arg value                                              | devbuilder  | Development mode flag                  |
+| `DEFAULT_WORKSPACE`       | `/workspaces`                                                | base        | Default workspace directory            |
+| `NODEJS_HOME`             | `/home/$USERNAME/.local/lib/nodejs`                          | devtools    | Node.js installation directory         |
+| `RESET_ROOT_PASS`         | `$DEFAULT_ROOT_PASS`                                         | devtools    | Control root password reset at startup |
+| `BIND_ADDR`               | Build arg value                                              | codeserver* | code-server bind address               |
+| `CODE_SERVER_WORKSPACE`   | `$DEFAULT_WORKSPACE`                                         | codeserver* | code-server workspace path             |
+| `CODE_SERVER_CONFIG`      | `/home/$USERNAME/.config/code-server/config.yaml`            | codeserver* | code-server config path                |
+| `CODE_SERVER_EXTENSIONS`  | `$DEFAULT_WORKSPACE/.code-server/extensions/extensions.json` | codeserver* | Extensions config                      |
+| `DEBUG`                   | `false`                                                      | codeserver* | Debug mode for code-server             |
 
 > [!NOTE]
-> As of Ubuntu 24+, a non-root `ubuntu` user exists. The Dockerfile automatically removes
-> the default `ubuntu` user (UID 1000) to avoid conflicts when creating a custom user.
+> As of Ubuntu 24+, a non-root `ubuntu` user (UID 1000) exists by default.
+> The Dockerfile automatically removes this user to avoid conflicts when creating a custom user.
 >
 > See the [official docs](https://code.visualstudio.com/remote/advancedcontainers/add-nonroot-user)
 > for more details on non-root users.
+
+## Library Scripts (lib-scripts/)
+
+Library scripts are installer and configuration scripts run during the Docker build process. They are copied to `/tmp/lib-scripts/`
+and executed in the Dockerfile RUN commands.
+
+### `base-utils.sh`
+
+Installs base utilities required for development.
+
+**Used In**: base target
+
+**Packages Installed**:
+
+- `openssh-client` - SSH client for remote connections
+- `pre-commit` - Pre-commit hook framework (if `PRE_COMMIT_ENABLED=true` and pipx/brew not available)
+
+**Dependencies**: Requires `/helpers/install-helper.sh`
+
+### `builder-utils.sh`
+
+Installs common utilities and dependencies for the builder stage.
+
+**Used In**: builder target
+
+**Packages Installed**:
+
+- `ca-certificates`, `gnupg2` - SSL/TLS certificates and GPG
+- `curl`, `wget` - HTTP clients
+- `vim`, `nano`, `less` - Text editors and pager
+- `procps`, `lsb-release` - Process tools and system info
+- `tzdata` - Timezone data
+- `python3` - System Python3
+- `jq`, `yq` - JSON and YAML processors
+
+**Dependencies**: Requires `/helpers/install-helper.sh`
+
+### `cloud-cli-tools.sh`
+
+Installs cloud provider CLI tools and infrastructure management tools.
+
+**Used In**: cloudtools target
+
+**Tools Installed**:
+
+- **AWS CLI v2** - AWS command-line interface (architecture-specific)
+- **Terraform** - Infrastructure as code tool from HashiCorp
+- AWS CLI bash completion for the non-root user
+
+**Dependencies**: Requires `wget`, `unzip`, `gpg`
+
+### `codeserver-install.sh`
+
+Installs code-server (VS Code in the browser) from GitHub releases.
+
+**Used In**: codeserver, codeserver-minimal targets
+
+**Installation Methods**:
+
+- `.deb` package (when `DOWNLOAD_STANDALONE=false`)
+- Standalone tar.gz (when `DOWNLOAD_STANDALONE=true`, default)
+
+**Build Arguments**:
+
+- `CODESERVER_VERSION` (default: `latest`) - code-server version
+- `DOWNLOAD_STANDALONE` (default: `false`) - Installation method
+
+**Features**:
+
+- Automatically detects latest version from GitHub API
+- Architecture-aware (amd64/arm64)
+- Installs to `$HOME/.local/lib/code-server-$VERSION`
+
+**Dependencies**: Requires `/helpers/install-helper.sh`
+
+### `codeserver-utils.sh`
+
+Utility configurations for code-server containers.
+
+**Used In**: codeserver, codeserver-minimal targets
+
+**Functions**:
+
+- Prepares system for code-server installation
+- Installs tini for proper signal handling
+- Configures non-root user environment
+
+### `devbuilder-user-setup.sh`
+
+Creates and configures the non-root development user.
+
+**Used In**: devuser, brewuser targets
+
+**Key Functions**:
+
+- Sets up bashrc and profile for both root and new user
+- Configures Homebrew environment (`brew shellenv`)
+- Configures Python path (Homebrew or devcontainer Python)
+- Creates non-root user with specified UID/GID
+- Grants passwordless sudo access
+- Sets up SSH directory with proper permissions
+- Optionally sets default root password (development only)
+- Adds system-wide bash aliases
+
+**Build Arguments Used**:
+
+- `USERNAME`, `USER_UID`, `USER_GID`
+- `PYTHON_VERSION`
+- `DEFAULT_ROOT_PASS`
+
+**Environment Setup**:
+
+- Homebrew integration in PATH
+- Python path configuration
+- PATH deduplication via fixpath.sh utility
+- Bash completion for Homebrew
+
+### `devtools-utils.sh`
+
+Installs development tools and utilities.
+
+**Used In**: devtools target
+
+**Packages Installed**:
+
+- Development build tools
+- Version control utilities
+- Editor and terminal enhancements
+- `fortune-mod`, `cowsay` - Fun terminal utilities
+
+**Dependencies**: Requires `/helpers/install-helper.sh`
+
+### `git-install.sh`
+
+Installs Git from source or uses system Git.
+
+**Used In**: devbuilder target
+
+**Installation Options**:
+
+- `system` - Use system-provided Git (default)
+- `latest` - Build latest Git from source
+- `X.Y.Z` - Build specific Git version from source
+
+**Build Arguments**:
+
+- `GIT_VERSION` (default: `system`)
+
+**Features**:
+
+- Downloads and compiles Git from official source
+- Configures with common dependencies
+- Installs to `/usr/local`
+
+### `go-install.sh`
+
+Installs Go toolchain and Go-based utilities.
+
+**Used In**: gobuilder target
+
+**Installation**:
+
+- Downloads official Go binary release
+- Installs to `/usr/local/go`
+- Builds `shfmt` (shell formatter) from source
+
+**Build Arguments**:
+
+- `GO_VERSION` (default: `latest`)
+
+**Features**:
+
+- Architecture-aware (amd64/arm64)
+- Automatically fetches latest version if not specified
+
+### `node-install.sh`
+
+Installs Node.js and npm.
+
+**Used In**: nodebuilder target
+
+**Installation**:
+
+- Downloads official Node.js binary release
+- Installs to `/usr/local/lib/node/nodejs`
+- Includes npm and npx
+
+**Build Arguments**:
+
+- `NODE_VERSION` (default: `lts`)
+
+**Features**:
+
+- Supports lts, latest, or specific versions
+- Architecture-aware
+- Creates installation script for reuse in other stages
+
+### `python-install.sh`
+
+Installs Python and configures Python environment.
+
+**Used In**: devtools target
+
+**Installation Options**:
+
+- `system` - Use system Python3
+- `devcontainer` - Use devcontainer Python feature
+- `latest` - Install latest Python via Homebrew
+- `X.Y` - Install specific Python version via Homebrew
+
+**Build Arguments**:
+
+- `PYTHON_VERSION` (default: `devcontainer`)
+
+**Post-Installation**:
+
+- Configures pipx (via Homebrew or system)
+- Installs Poetry and uv (modern Python package managers)
+- Optionally installs pre-commit via pipx
+
+## Utility Scripts (utils/)
+
+Utility scripts are helper scripts available at runtime in the container. They are copied to `/usr/local/bin/` and can
+be invoked directly.
+
+### `fixpath.sh`
+
+Fixes and deduplicates the PATH environment variable.
+
+**Installed at**: `/usr/local/bin/fixpath.sh`
+
+**Usage**:
+
+```bash
+fixpath.sh [term] [path]
+```
+
+**Arguments**:
+
+- `term` (default: `/usr/local/sbin`) - First common entry in PATH
+- `path` (default: `$PATH`) - PATH string to fix
+
+**Purpose**:
+
+- Synchronizes container PATH with `/etc/environment`
+- Removes duplicate PATH entries
+- Ensures consistent PATH across shells and sessions
+
+**Output**: Deduplicated PATH string
+
+**Example**:
+
+```bash
+# Fix current PATH
+PATH="$(fixpath.sh)"
+
+# Fix custom PATH
+PATH="$(fixpath.sh /usr/local/sbin "/custom/path:/usr/bin")"
+```
+
+> [!NOTE]
+> The `FIXPATH` variable you may see in build documentation is a Docker build ARG that specifies the installation path
+> during the build process. At runtime, simply invoke the script as shown above.
+
+### `healthcheck.sh`
+
+Container health monitoring utility.
+
+**Usage**:
+
+```bash
+healthcheck [-i|--interactive]
+```
+
+**Purpose**:
+
+- Monitors container health status
+- Watches `/.healthcheck` file for status updates
+- Provides interactive mode for debugging
+- Handles graceful shutdown on EOF (Ctrl+D)
+
+**Environment Variables**:
+
+- `EXIT_ON_EOF` (default: `false`) - Exit on Ctrl+D
+
+**Features**:
+
+- Watches health status every 5 seconds
+- Signal handling (INT, EXIT)
+- Optional interactive output
+
+### `logger.sh`
+
+Logging utility for container scripts.
+
+**Usage**:
+
+```bash
+logger [message]
+LEVEL=error logger [message]
+```
+
+**Log Levels**:
+
+- `info` (default) - Standard informational messages
+- `error` - Error messages (red)
+- `warn` - Warning messages (yellow)
+- `success` / `√` - Success messages (green)
+- `*`, `ƒ`, `!`, `**` - Various status indicators with colors
+
+**Environment Variables**:
+
+- `LEVEL` - Set log level for message
+
+**Example**:
+
+```bash
+$LOGGER "Starting installation..."
+LEVEL=error $LOGGER "Installation failed"
+LEVEL=√ $LOGGER "Installation complete"
+```
+
+### `passgen.sh`
+
+Secure password generation utility.
+
+**Usage**:
+
+```bash
+passgen [-quantity] [mode] [options] [positional_args]
+```
+
+**Quantity**:
+
+- `-2` through `-99` - Number of passwords to generate (optional, numeric preceded by single dash)
+- Default: 1 password, max: 99
+
+**Modes**:
+
+- `-s, --simple` - Simple password (default)
+- `-r, --requirements` - Password with character family requirements
+
+**Options**:
+
+- `-l, --length LENGTH` - Password length (default: 32)
+- `-c, --charset CHARSET` - Character set for simple mode (default: [:graph:])
+- `-m, --min-char-per-fam N` - Minimum chars per family for requirements mode (default: 2)
+
+**Positional Arguments**:
+
+- First positional argument (if numeric): Password length
+- Cannot mix positional arguments with flag options
+
+**Example Character Sets**:
+
+- `[:graph:]` - All printable characters except space
+- `[:alnum:]` - Alphanumeric only
+- Custom: `a-zA-Z0-9!@#$%`
+
+**Examples**:
+
+```bash
+# Generate one 32-character password
+passgen
+
+# Generate password with specific length (positional)
+passgen 16
+
+# Generate 5 passwords of length 20 (quantity shorthand with flag option)
+passgen -5 -l 20
+
+# Generate 3 passwords with positional length
+passgen -3 16
+
+# Requirements mode with min 2 chars from each family
+passgen -r -l 16 -m 2
+
+# Simple mode with custom charset
+passgen -s -l 12 -c '[:alnum:]'
+
+# Generate 10 requirements-mode passwords
+passgen -10 -r -l 20 -m 3
+```
+
+**Features**:
+
+- Uses `/dev/urandom` for cryptographic randomness
+- GNU coreutils compatibility (prefers ghead, gfold, gshuf, gtr)
+- Character family requirements: digits, lowercase, uppercase
+- Shuffled output to distribute character families
+
+### `pipxpath.sh`
+
+Locates and invokes pipx binary.
+
+**Installed at**: `/usr/local/bin/pipxpath.sh`
+
+**Usage**:
+
+```bash
+# Get pipx path
+pipxpath.sh
+
+# Run pipx command
+pipxpath.sh list
+pipxpath.sh install poetry
+```
+
+**Purpose**:
+
+- Finds pipx in system PATH or Homebrew
+- Provides consistent pipx access across environments
+- Wrapper script for locating and running pipx
+
+**Output**: Path to pipx binary (if no arguments), or command output
+
+**Example**:
+
+```bash
+# Get pipx path
+PIPX_PATH="$(pipxpath.sh)"
+
+# Use the script to run pipx commands
+pipxpath.sh install pre-commit
+pipxpath.sh list
+```
+
+> [!NOTE]
+> The `PIPX` variable you may see in build documentation is a Docker build ARG that specifies the installation path during
+> the build process. At runtime, simply invoke the script as shown above.
 
 ## Quick Start
 
@@ -105,9 +950,9 @@ The recommended workflow for working with the container image is:
 3. **Publish** the image to GitHub Container Registry
 4. **Run** again using the published GHCR URL (optional verification)
 
-## Scripts
+## Build, Run, and Publish Scripts
 
-### build.sh
+### `build.sh`
 
 Builds the Docker image from the Dockerfile.
 
@@ -157,7 +1002,7 @@ DOCKER_CONTEXT=. \
 ./.devcontainer/docker/bin/build.sh
 ```
 
-### run.sh
+### `run.sh`
 
 Runs the Docker container with the workspace mounted.
 
@@ -197,7 +1042,7 @@ run.sh <image-name[:build_target]> [remote-user] [commands] [context]
 ./.devcontainer/docker/bin/run.sh starter-project vscode .
 ```
 
-### publish.sh
+### `publish.sh`
 
 Publishes the Docker image to GitHub Container Registry. Also performs cleanup by removing dangling images after tagging.
 
@@ -254,7 +1099,7 @@ export CR_PAT=$(gh auth token)
   stairwaytowonderland
 ```
 
-### clean.sh
+### `clean.sh`
 
 Removes all dangling (untagged) Docker images that are not associated with any container.
 These are typically intermediate images left over from builds or retagging operations.
