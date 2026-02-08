@@ -418,7 +418,7 @@ if [ "\$RESET_ROOT_PASS" = "true" ] ; then
   sudo passwd root
 fi
 
-if type /usr/games/fortune >/dev/null 2>&1 \
+if type /usr/games/fortune >/dev/null 2>&1 \\
   && type /usr/games/cowsay >/dev/null 2>&1
 then
   /usr/games/fortune | /usr/games/cowsay

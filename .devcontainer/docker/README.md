@@ -136,12 +136,12 @@ graph TD
 | Solid lines (➞)                                                         | `FROM` relationships (inheritance)                                            |
 | Dashed lines (-.➝)                                                      | `COPY --from` relationships (resource copying)                                |
 | Diamond node                                                            | Conditional choice based on build argument                                    |
-| Circle                                                                  | File generator stages                                                         |
+| Light Blue Circle                                                       | File generator stages                                                         |
 | [_Moby_ Blue](https://www.docker.com/company/newsroom/media-resources/) | Source parent image                                                           |
 | **Green**                                                               | Primary development containers                                                |
 | **Purple**                                                              | Specialized development containers                                            |
-| **Light Blue**                                                          | Temporary tool builder stages                                                 |
-| **Medium Blue**                                                         | Intermediate builder stages                                                   |
+| **Medium Blue**                                                         | Temporary tool builder stages                                                 |
+| **Dark Blue**                                                           | Intermediate builder stages                                                   |
 | **$DEV_PARENT_IMAGE**                                                   | Build argument that determines whether base inherits from devuser or brewuser |
 
 ### 1. **`utils`** (`FROM alpine`)
@@ -844,13 +844,16 @@ Secure password generation utility.
 **Usage**:
 
 ```bash
-passgen [-quantity] [mode] [options] [positional_args]
+passgen [-<n>] [mode] [options] [positional_args]
 ```
 
-**Quantity**:
+**`<n>`** _quantity_:
 
-- `-2` through `-99` - Number of passwords to generate (optional, numeric preceded by single dash)
-- Default: 1 password, max: 99
+Number of passwords to generate (default: 0; optional, numeric preceded by single dash).
+
+- Default maximum is determined by a `DEFAULT_MAX_QTY` environment variable (default: 10000).
+- **`n=0`** - This is the default quantity, and causes a single password to output without line breaks.
+- **`n>0,n<=$DEFAULT_MAX_QTY`** - Causes _n_ number of passwords to output, with line breaks after each.
 
 **Modes**:
 
